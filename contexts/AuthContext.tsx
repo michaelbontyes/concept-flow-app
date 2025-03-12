@@ -1,3 +1,5 @@
+'use client';
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthState, LoginCredentials, Token, User } from '@/types/auth';
 import { authApi } from '@/lib/api';
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = JSON.parse(storedToken) as Token;
         
         // Get user profile using the token
-        const user = await authApi.getUserProfile();
+        const user = await authApi.getCurrentUser();
         
         setState({
           token,
@@ -79,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStorageItem('token', JSON.stringify(token));
       
       // Get user profile
-      const user = await authApi.getUserProfile();
+      const user = await authApi.getCurrentUser();
       
       setState({
         token,

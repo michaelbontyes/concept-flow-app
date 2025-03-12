@@ -24,10 +24,33 @@ apiClient.interceptors.request.use(
   (config) => {
     // Only try to access localStorage in a browser environment
     if (isBrowser) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        const tokenData = JSON.parse(token) as Token;
-        config.headers.Authorization = `Bearer ${tokenData.access_token}`;
+      try {
+        const tokenStr = localStorage.getItem('token');
+        if (tokenStr) {
+          // Log token for debugging
+          console.log('Token found in localStorage');
+          
+          // Safely parse the token
+          let tokenData: Token;
+          try {
+            tokenData = JSON.parse(tokenStr) as Token;
+            
+            if (tokenData && tokenData.access_token) {
+              config.headers.Authorization = `Bearer ${tokenData.access_token}`;
+              console.log('Authorization header set successfully');
+            } else {
+              console.error('Token exists but is missing access_token property:', tokenData);
+            }
+          } catch (parseError) {
+            console.error('Failed to parse token from localStorage:', parseError);
+            // If token is not valid JSON, remove it
+            localStorage.removeItem('token');
+          }
+        } else {
+          console.log('No token found in localStorage');
+        }
+      } catch (e) {
+        console.error('Error accessing localStorage:', e);
       }
     }
     return config;
@@ -39,20 +62,39 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
+    console.error('API Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+    });
+
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      console.error('Response error:', {
-        data: error.response.data,
+      console.error('Response error details:', {
         status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data || 'No data',
         headers: error.response.headers,
       });
+      
+      // Handle 401 Unauthorized errors (expired token)
+      if (error.response.status === 401) {
+        console.error('Authentication error - clearing token');
+        localStorage.removeItem('token');
+        // Optionally redirect to login
+        if (isBrowser && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+      }
     } else if (error.request) {
       // The request was made but no response was received
-      console.error('Request error:', error.request);
+      console.error('Network error - no response received:', {
+        request: error.request,
+        message: error.message,
+      });
     } else {
       // Something happened in setting up the request that triggered an Error
-      console.error('Error:', error.message);
+      console.error('Request setup error:', error.message);
     }
     return Promise.reject(error);
   }
@@ -106,10 +148,36 @@ export const authApi = {
   
   getCurrentUser: async () => {
     try {
+      // Check if token exists before making the request
+      const tokenStr = localStorage.getItem('token');
+      if (!tokenStr) {
+        console.error('Cannot get current user: No token in localStorage');
+        throw new Error('No authentication token found');
+      }
+      
+      // Validate token format
+      try {
+        const tokenData = JSON.parse(tokenStr) as Token;
+        if (!tokenData.access_token) {
+          console.error('Invalid token format in localStorage');
+          localStorage.removeItem('token'); // Remove invalid token
+          throw new Error('Invalid authentication token');
+        }
+      } catch (e) {
+        console.error('Failed to parse token:', e);
+        localStorage.removeItem('token');
+        throw new Error('Invalid authentication token format');
+      }
+      
       const response = await apiClient.get('/auth/me');
       return response.data;
     } catch (error) {
       console.error('Get user profile failed:', error);
+      // If it's a 401, clear the token
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        console.log('Unauthorized - clearing token');
+        localStorage.removeItem('token');
+      }
       throw error;
     }
   },
@@ -178,13 +246,41 @@ export function logout() {
 
 export const projectApi = {
   getProjects: async (organizationId: string | number): Promise<Project[]> => {
-    try {
-      const response = await apiClient.get(`/organizations/${organizationId}/projects`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to fetch projects:', error);
-      throw error;
+    let retries = 2; // Number of retries for network issues
+    
+    while (retries >= 0) {
+      try {
+        console.log(`Fetching projects for organization ${organizationId}`);
+        const response = await apiClient.get(`/organizations/${organizationId}/projects`);
+        console.log('Projects fetched successfully');
+        return response.data;
+      } catch (error) {
+        if (error instanceof AxiosError) {
+          // If it's a server error (5xx) or network error and we have retries left
+          if ((!error.response || (error.response && error.response.status >= 500)) && retries > 0) {
+            console.log(`Retrying project fetch, ${retries} attempts left`);
+            retries--;
+            // Wait before retrying (exponential backoff)
+            await new Promise(r => setTimeout(r, (2 - retries) * 1000));
+            continue;
+          }
+          
+          // Handle 401/403 errors by redirecting to login
+          if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            console.error('Authentication error when fetching projects');
+            localStorage.removeItem('token');
+            if (isBrowser && window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
+          }
+        }
+        
+        console.error('Failed to fetch projects:', error);
+        throw error;
+      }
     }
+    
+    throw new Error('Failed to fetch projects after retries');
   },
 
   getProject: async (organizationId: string | number, projectId: string | number): Promise<Project> => {

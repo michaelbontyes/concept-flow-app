@@ -3,22 +3,26 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!authLoading && !userLoading) {
+      if (!isAuthenticated || !user) {
+        router.push('/login');
+      }
     }
-  }, [user, loading, router]);
+  }, [isAuthenticated, user, userLoading, authLoading, router]);
 
-  if (loading) {
+  if (authLoading || userLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -29,7 +33,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  if (!user) {
+  if (!isAuthenticated || !user) {
     return null;
   }
 

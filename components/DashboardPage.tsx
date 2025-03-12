@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@/contexts/UserContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { authApi, projectApi, metadataApi } from '@/lib/api';
 import AuthGuard from '@/components/AuthGuard';
 import ProjectCard from '@/components/ProjectCard';
 import { useRouter } from 'next/navigation';
 import { Project } from '@/types/project';
 import { Metadata } from '@/types/metadata';
+import { AxiosError } from 'axios';
 
 export default function DashboardPage() {
   const { user } = useUser();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -29,6 +32,7 @@ export default function DashboardPage() {
       }
 
       try {
+        console.log('Loading projects for organization:', user.organization_id);
         const data = await projectApi.getProjects(user.organization_id);
         setProjects(data);
         
@@ -40,17 +44,37 @@ export default function DashboardPage() {
           setSelectedProject(sortedProjects[0]);
         }
       } catch (err) {
-        setError('Failed to load projects');
         console.error('Error loading projects:', err);
+        
+        // Provide more specific error messages based on the error type
+        if (err instanceof AxiosError) {
+          if (!err.response) {
+            setError('Network error. Please check your connection and try again.');
+          } else if (err.response.status === 401 || err.response.status === 403) {
+            setError('Authentication error. Please sign in again.');
+            // Force logout and redirect to login
+            authApi.logout();
+            router.push('/login');
+          } else if (err.response.status === 404) {
+            setError(`Organization not found (ID: ${user.organization_id}). Please contact support.`);
+          } else if (err.response.status >= 500) {
+            setError('Server error. Please try again later or contact support.');
+          } else {
+            setError(`Failed to load projects: ${err.response.data?.detail || 'Unknown error'}`);
+          }
+        } else {
+          setError('Failed to load projects. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
+    // Only load projects if user is available and authenticated
+    if (user && isAuthenticated) {
       loadProjects();
     }
-  }, [user]);
+  }, [user, isAuthenticated, router]);
 
   useEffect(() => {
     const loadMetadata = async () => {

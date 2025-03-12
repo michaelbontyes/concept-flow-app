@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authApi } from '@/lib/api';
+import { useAuth } from './AuthContext';
 
 export interface User {
   id: number;
@@ -22,22 +23,24 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
     const loadUser = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
+      // Don't attempt to load user if auth is still loading or not authenticated
+      if (authLoading || !isAuthenticated) {
+        if (!authLoading && !isAuthenticated) {
+          // If auth is done loading and user is not authenticated, set loading to false
           setLoading(false);
-          return;
         }
+        return;
+      }
 
+      try {
         const userData = await authApi.getCurrentUser();
         setUser(userData);
       } catch (error) {
         console.error('Error loading user:', error);
-        // If there's an error, clear the token and user state
-        localStorage.removeItem('token');
         setUser(null);
       } finally {
         setLoading(false);
@@ -45,7 +48,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
 
     loadUser();
-  }, []);
+  }, [isAuthenticated, authLoading]);
 
   return (
     <UserContext.Provider value={{ user, setUser, loading }}>
