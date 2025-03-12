@@ -3,6 +3,7 @@
 import axios, { AxiosError } from 'axios';
 import { LoginCredentials, Token } from '@/types/auth';
 import { Project } from '@/types/project';
+import { Metadata } from '@/types/metadata';
 
 // Use relative URL for API endpoints since we're using Next.js rewrites
 const API_URL = '/api/v1';
@@ -221,6 +222,49 @@ export const projectApi = {
       await apiClient.delete(`/organizations/${organizationId}/projects/${projectId}`);
     } catch (error) {
       console.error(`Failed to delete project ${projectId}:`, error);
+      throw error;
+    }
+  },
+};
+
+export const metadataApi = {
+  listMetadata: async (projectId: number | string, metadataType?: string): Promise<Metadata[]> => {
+    try {
+      const params = metadataType ? { metadata_type: metadataType } : undefined;
+      const response = await apiClient.get(`/projects/${projectId}/metadata`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch metadata:', error);
+      throw error;
+    }
+  },
+
+  getMetadata: async (projectId: number | string, metadataId: number | string): Promise<Metadata> => {
+    try {
+      const response = await apiClient.get(`/projects/${projectId}/metadata/${metadataId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch metadata ${metadataId}:`, error);
+      throw error;
+    }
+  },
+
+  createMetadata: async (projectId: number | string, data: Omit<Metadata, 'id' | 'created_at' | 'updated_at'>): Promise<Metadata> => {
+    try {
+      const response = await apiClient.post(`/projects/${projectId}/metadata`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create metadata:', error);
+      throw error;
+    }
+  },
+
+  updateMetadata: async (projectId: number | string, metadataId: number | string, data: Partial<Metadata>): Promise<Metadata> => {
+    try {
+      const response = await apiClient.patch(`/projects/${projectId}/metadata/${metadataId}`, data);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to update metadata ${metadataId}:`, error);
       throw error;
     }
   },
