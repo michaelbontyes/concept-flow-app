@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { authApi, projectApi, metadataApi } from '@/lib/api';
 import AuthGuard from '@/components/AuthGuard';
 import ProjectCard from '@/components/ProjectCard';
+import MetadataSummaryTable from '@/components/MetadataSummaryTable';
 import { useRouter } from 'next/navigation';
 import { Project } from '@/types/project';
 import { Metadata } from '@/types/metadata';
@@ -246,10 +247,21 @@ export default function DashboardPage() {
                     <p className="text-gray-600">No metadata found for this project</p>
                   </div>
                 ) : (
-                  <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
-                    <pre className="text-sm text-gray-800 whitespace-pre-wrap">
-                      {JSON.stringify(metadata[0].content, null, 2)}
-                    </pre>
+                  <div className="space-y-8">
+                    {/* Form Concept Coverage Summary */}
+                    <MetadataSummaryTable metadata={metadata[0].content} />
+                    
+                    {/* Raw Metadata (Collapsed by Default) */}
+                    <details className="mt-8">
+                      <summary className="text-md font-medium text-gray-900 cursor-pointer hover:text-blue-600">
+                        View Raw Metadata JSON
+                      </summary>
+                      <div className="mt-4 bg-gray-50 rounded-lg p-4 overflow-x-auto">
+                        <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+                          {JSON.stringify(metadata[0].content, null, 2)}
+                        </pre>
+                      </div>
+                    </details>
                   </div>
                 )}
               </div>
