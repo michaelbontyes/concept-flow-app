@@ -2,19 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@/utils/supabase';
-import ReportMatrix from './ReportMatrix';
-import { processReportData } from '@/utils/reportUtils';
+import { User } from '@supabase/supabase-js';
+
+interface Organization {
+  id: string;
+  name: string;
+  description?: string;
+  members: string[];
+  created_at: string;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  organization_id: string;
+  created_at: string;
+}
 
 export default function UserProfile() {
-  const [user, setUser] = useState(null);
-  const [organizations, setOrganizations] = useState([]);
-  const [selectedOrg, setSelectedOrg] = useState(null);
-  const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [reportData, setReportData] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [orgProjectCounts, setOrgProjectCounts] = useState({});
+  const [error, setError] = useState<string | null>(null);
+  const [orgProjectCounts, setOrgProjectCounts] = useState<Record<string, number>>({});
   
   const supabase = createBrowserClient();
   
@@ -42,12 +56,12 @@ export default function UserProfile() {
         if (orgError) throw orgError;
         
         if (orgs && orgs.length > 0) {
-          setOrganizations(orgs);
+          setOrganizations(orgs as Organization[]);
           // Select the most recent organization by default
-          setSelectedOrg(orgs[0]);
+          setSelectedOrg(orgs[0] as Organization);
           
           // Get project counts for each organization
-          const counts = {};
+          const counts: Record<string, number> = {};
           for (const org of orgs) {
             const { count, error: countError } = await supabase
               .from('projects')
@@ -63,7 +77,7 @@ export default function UserProfile() {
         
         setLoading(false);
       } catch (err) {
-        setError(err.message);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLoading(false);
       }
     }
@@ -85,8 +99,7 @@ export default function UserProfile() {
             name, 
             description,
             organization_id,
-            created_at,
-            reports (*)
+            created_at
           `)
           .eq('organization_id', selectedOrg.id)
           .order('created_at', { ascending: false });
@@ -94,60 +107,23 @@ export default function UserProfile() {
         if (projError) throw projError;
         
         if (projectsData && projectsData.length > 0) {
-          setProjects(projectsData);
+          setProjects(projectsData as Project[]);
           // Select the most recent project by default
-          setSelectedProject(projectsData[0]);
+          setSelectedProject(projectsData[0] as Project);
         } else {
           setProjects([]);
           setSelectedProject(null);
         }
         
-        setReportData(null);
         setLoading(false);
       } catch (err) {
-        setError(err.message);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLoading(false);
       }
     }
     
     fetchProjects();
   }, [selectedOrg]);
-  
-  // Fetch report data when project is selected
-  useEffect(() => {
-    async function fetchReportData() {
-      if (!selectedProject || !selectedProject.reports || selectedProject.reports.length === 0) {
-        setReportData(null);
-        return;
-      }
-      
-      try {
-        setLoading(true);
-        
-        // Get all reports for this project
-        const reportIds = selectedProject.reports.map(r => r.id);
-        const { data: reportsData, error: reportsError } = await supabase
-          .from('reports')
-          .select('*')
-          .in('id', reportIds);
-        
-        if (reportsError) throw reportsError;
-        
-        if (reportsData && reportsData.length > 0) {
-          // Process the report data for the matrix
-          const processedData = processReportData(reportsData);
-          setReportData({ raw: reportsData, processed: processedData });
-        }
-        
-        setLoading(false);
-      } catch (err) {
-        setError(err.message);
-        setLoading(false);
-      }
-    }
-    
-    fetchReportData();
-  }, [selectedProject]);
   
   if (loading && !user) {
     return <div className="w-full text-center py-8">Loading user profile...</div>;
@@ -230,7 +206,7 @@ export default function UserProfile() {
                   {project.description && <p className="text-sm text-foreground/70">{project.description}</p>}
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-xs text-foreground/50">
-                      {project.reports?.length || 0} report(s)
+                      Created: {new Date(project.created_at).toLocaleDateString()}
                     </span>
                     {selectedProject?.id === project.id && (
                       <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">Selected</span>
@@ -243,26 +219,8 @@ export default function UserProfile() {
         </div>
       )}
       
-      {/* Report Matrix - Only show if a project with reports is selected */}
-      {selectedProject && reportData && (
-        <div className="bg-foreground/5 p-6 rounded-lg overflow-x-auto">
-          <h2 className="text-2xl font-bold mb-4">Report Matrix for {selectedProject.name}</h2>
-          
-          <div className="mb-4">
-            <p><strong>Source:</strong> {reportData.raw[0]?.sourceFile || 'N/A'}</p>
-            <p><strong>Environment:</strong> {reportData.raw[0]?.environment || 'N/A'}</p>
-            <p><strong>Last Updated:</strong> {new Date(reportData.raw[0]?.syncedAt || Date.now()).toLocaleString()}</p>
-          </div>
-          
-          <ReportMatrix 
-            reportsByType={reportData.processed.reportsByType} 
-            entityData={reportData.processed.entityData}
-          />
-        </div>
-      )}
-      
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg text-red-500">
+        <div className="bg-red-100 border border-red-300 text-red-700 p-4 rounded-lg">
           <p><strong>Error:</strong> {error}</p>
         </div>
       )}

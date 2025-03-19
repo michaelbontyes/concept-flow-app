@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/utils/supabase'
+import { Button } from '@/components/ui/button'
 
 export default function ClientAuthButton() {
   const [user, setUser] = useState(null)
@@ -29,22 +30,25 @@ export default function ClientAuthButton() {
     return <div>Loading...</div>
   }
 
+  // Get username from email (part before @) or use display name if available
+  const displayName = user ? (user.user_metadata?.name || user.email?.split('@')[0] || 'User') : ''
+
   return user ? (
     <div className="flex items-center gap-4">
-      Hey, {user.email}!
-      <button 
+      Hey, {displayName}!
+      <Button 
         onClick={handleSignOut}
-        className="bg-btn-background hover:bg-btn-background-hover rounded-md px-4 py-2 no-underline"
+        variant="outline"
+        size="sm"
       >
         Logout
-      </button>
+      </Button>
     </div>
   ) : (
-    <Link
-      href="/login"
-      className="bg-btn-background hover:bg-btn-background-hover flex rounded-md px-3 py-2 no-underline"
-    >
-      Login
-    </Link>
+    <Button asChild variant="outline" size="sm">
+      <Link href="/login">
+        Login
+      </Link>
+    </Button>
   )
 }

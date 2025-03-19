@@ -7,6 +7,10 @@ jspm_packages/
 build/
 .output/
 
+# Next.js build output
+.next/
+out/
+
 # Vite
 .vite/
 vite.config.js.timestamp-*
@@ -66,7 +70,6 @@ tmp/
 
 # Build artifacts
 dist/
-out/
 public/build/
 
 # Playwright
