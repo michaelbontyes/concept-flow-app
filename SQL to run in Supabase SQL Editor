@@ -1,0 +1,18 @@
+-- Grant permissions on the reports table
+GRANT SELECT ON reports TO anon, authenticated;
+
+-- Enable RLS on the reports table
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for users to view reports in their projects
+CREATE POLICY "Users can view reports in their projects" 
+ON reports FOR SELECT 
+TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM projects
+    JOIN organizations ON projects.organization_id = organizations.id
+    WHERE projects.id = reports.project_id
+    AND organizations.members = auth.uid()::uuid
+  )
+);

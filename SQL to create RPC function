@@ -1,0 +1,10 @@
+-- Create a function to get all organizations (bypassing RLS)
+CREATE OR REPLACE FUNCTION get_all_organizations()
+RETURNS SETOF organizations
+LANGUAGE sql SECURITY DEFINER
+AS $$
+  SELECT * FROM organizations;
+$$;
+
+-- Grant execute permission on the function
+GRANT EXECUTE ON FUNCTION get_all_organizations() TO anon, authenticated;
