@@ -1035,6 +1035,9 @@ video {
   --tw-bg-opacity: 1;
   background-color: rgb(22 163 74 / var(--tw-bg-opacity));
 }
+.bg-gray-50\/50 {
+  background-color: rgb(249 250 251 / 0.5);
+}
 .fill-current {
   fill: currentColor;
 }
@@ -1354,6 +1357,11 @@ video {
 .hover\:bg-green-700:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(21 128 61 / var(--tw-bg-opacity));
+}
+
+.hover\:bg-gray-100:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity));
 }
 
 .hover\:text-accent-foreground:hover {
