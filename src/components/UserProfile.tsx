@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@/utils/supabase';
 import { User } from '@supabase/supabase-js';
+import ReportMatrix from './ReportMatrix';
 
 interface Organization {
   id: string;
@@ -217,6 +218,11 @@ export default function UserProfile() {
             </div>
           )}
         </div>
+      )}
+      
+      {/* Report Matrix Section - Only show if a project is selected */}
+      {selectedProject && (
+        <ReportMatrix projectId={selectedProject.id} />
       )}
       
       {error && (
