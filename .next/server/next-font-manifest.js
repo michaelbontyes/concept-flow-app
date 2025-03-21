@@ -1,1 +1,0 @@
-self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/Users/michaelbontyes/Repos/GitHub/concept-flow-workspace/concept-flow-app/src/app/layout\":[\"static/media/d82a8a076d0105b5-s.p.woff2\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"
