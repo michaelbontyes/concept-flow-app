@@ -24,7 +24,8 @@
     "prepare": "husky install",
     "test": "jest",
     "test:ci": "jest --ci",
-    "analyze": "ANALYZE=true pnpm build"
+    "analyze": "ANALYZE=true pnpm build",
+    "git:clean-next": "chmod +x scripts/remove-next-from-git.sh && ./scripts/remove-next-from-git.sh"
   },
   "dependencies": {
     "@next/bundle-analyzer": "^14.0.4",
