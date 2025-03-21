@@ -25,7 +25,7 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
   const [activeTab, setActiveTab] = useState('matrix');
   const [expandedForms, setExpandedForms] = useState<Record<string, boolean>>({});
   const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
-  const [showOnlyFaulty, setShowOnlyFaulty] = useState<boolean>(false);
+  const [showOnlyFaulty, setShowOnlyFaulty] = useState<boolean>(true);
   
   const supabase = createBrowserClient();
   
@@ -428,23 +428,36 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
 
   // Render the matrix view
   const renderMatrixView = () => {
-    const formNames = getFormNames();
-    const environments = getEnvironments();
+    if (!report?.content?.mergedReport) return <p>No report data available.</p>;
     
-    if (formNames.length === 0 || environments.length === 0) {
-      return <p>No form data available in the report.</p>;
-    }
+    const formNames = [...new Set(report.content.mergedReport.map((item: any) => item.formName))];
+    const environments = Object.keys(report.content.mergedMeta || {});
     
     return (
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            {renderEnvironmentHeader(environments)}
-          </thead>
-          <tbody>
-            {formNames.map(formName => renderFormRow(formName, environments))}
-          </tbody>
-        </table>
+      <div>
+        <div className="mb-4 flex justify-end">
+          <label className="flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={showOnlyFaulty} 
+              onChange={() => setShowOnlyFaulty(!showOnlyFaulty)}
+              className="mr-2"
+            />
+            <span>Show only items with issues</span>
+          </label>
+        </div>
+        <MatrixView
+          report={report}
+          formNames={formNames}
+          environments={environments}
+          expandedForms={expandedForms}
+          toggleForm={toggleForm}
+          showOnlyFaulty={showOnlyFaulty}
+          toggleFaultyFilter={() => setShowOnlyFaulty(!showOnlyFaulty)}
+          expandedQuestions={expandedQuestions}
+          toggleQuestion={toggleQuestion}
+          calculateFormStats={calculateFormStats}
+        />
       </div>
     );
   };

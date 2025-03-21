@@ -819,6 +819,9 @@ video {
 .items-center {
   align-items: center;
 }
+.justify-end {
+  justify-content: flex-end;
+}
 .justify-center {
   justify-content: center;
 }
@@ -1047,6 +1050,9 @@ video {
 }
 .pt-20 {
   padding-top: 5rem;
+}
+.pr-4 {
+  padding-right: 1rem;
 }
 .text-left {
   text-align: left;

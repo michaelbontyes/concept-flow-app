@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from 'react';
-import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Copy } from 'lucide-react';
+import { ChevronDown, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface FormDetailsProps {
   formName: string;
@@ -49,21 +49,17 @@ export default function FormDetails({
   
   return (
     <div className="p-4 bg-white">
-      <div className="mb-4 flex justify-between items-center">
-        <h3 className="text-lg font-semibold">{formName} Details</h3>
-        <div className="flex items-center">
-          <label className="flex items-center cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={showOnlyFaulty} 
-              onChange={toggleFaultyFilter}
-              className="mr-2"
-            />
-            <span>Show only items with issues</span>
-          </label>
-        </div>
+      <div className="mb-4 flex justify-end">
+        <label className="flex items-center cursor-pointer">
+          <input 
+            type="checkbox" 
+            checked={showOnlyFaulty} 
+            onChange={toggleFaultyFilter}
+            className="mr-2"
+          />
+          <span>Show only items with issues</span>
+        </label>
       </div>
-      
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
@@ -73,7 +69,6 @@ export default function FormDetails({
               {environments.map(env => (
                 <th key={env} className="p-2 text-center">{env}</th>
               ))}
-              <th className="p-2 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -120,12 +115,14 @@ export default function FormDetails({
                     {environments.map(env => {
                       const missingFields = [];
                       
+                      // Check which fields are missing for this environment
                       ['externalId', 'question', 'translation', 'datatype'].forEach(field => {
                         if (item[field] && item[field][env] === 'Missing') {
                           missingFields.push(field);
                         }
                       });
                       
+                      // For DHIS2 environments, check DHIS2-specific fields
                       if (env.includes('DHIS2') && item.dhis2DeUid && item.dhis2DeUid[env] === 'Missing') {
                         missingFields.push('dhis2DeUid');
                       }
@@ -133,50 +130,36 @@ export default function FormDetails({
                       return (
                         <td key={env} className="p-2 text-center">
                           {missingFields.length > 0 ? (
-                            <div className="text-red-500 text-sm">
-                              <span className="flex items-center justify-center">
-                                <AlertCircle size={14} className="mr-1" />
-                                Missing
-                              </span>
-                              <div className="text-xs mt-1">
+                            <div className="flex flex-col items-center">
+                              <AlertCircle size={16} className="text-red-500" />
+                              <div className="text-xs text-red-500 mt-1">
                                 {missingFields.map(field => (
                                   <div key={field}>{field}</div>
                                 ))}
                               </div>
                             </div>
                           ) : (
-                            <span className="text-green-500 flex items-center justify-center">
-                              <CheckCircle size={14} className="mr-1" />
-                              Found
-                            </span>
+                            <CheckCircle size={16} className="mx-auto text-green-500" />
                           )}
                         </td>
                       );
                     })}
-                    
-                    <td className="p-2">
-                      <div className="flex justify-center gap-1">
-                        <button 
-                          className="p-1 hover:bg-gray-100 rounded"
-                          title="Copy UUID" 
-                          onClick={() => {
-                            if (questionId) navigator.clipboard.writeText(questionId);
-                          }}
-                        >
-                          <Copy size={14} />
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                   
-                  {/* Render answers if this question has them and is expanded */}
                   {item.answers && item.answers.length > 0 && expandedQuestions[questionId] && (
                     <>
-                      {item.answers.map((answer: any, answerIdx: number) => {
+                      {item.answers.map((answer: any, ansIdx: number) => {
                         const answerId = answer.externalId?.value;
+                        const answerHasMissing = environments.some(env => {
+                          return ['externalId', 'answer', 'translation', 'dhis2OptionUid'].some(
+                            field => answer[field] && answer[field][env] === 'Missing'
+                          );
+                        });
+                        
+                        if (showOnlyFaulty && !answerHasMissing) return null;
                         
                         return (
-                          <tr key={answerId || `answer-${answerIdx}`} className="bg-gray-50/50">
+                          <tr key={answerId || `answer-${ansIdx}`} className="bg-gray-50/50">
                             <td className="p-2 pl-8 border-t">
                               <div className="flex items-center">
                                 <span className="text-gray-500">↳</span>
@@ -188,53 +171,35 @@ export default function FormDetails({
                             {environments.map(env => {
                               const missingFields = [];
                               
+                              // Check which fields are missing for this environment
                               ['externalId', 'answer', 'translation'].forEach(field => {
                                 if (answer[field] && answer[field][env] === 'Missing') {
                                   missingFields.push(field);
                                 }
                               });
                               
+                              // For DHIS2 environments, check DHIS2-specific fields
                               if (env.includes('DHIS2') && answer.dhis2OptionUid && answer.dhis2OptionUid[env] === 'Missing') {
                                 missingFields.push('dhis2OptionUid');
                               }
                               
                               return (
-                                <td key={env} className="p-2 text-center">
+                                <td key={env} className="p-2 text-center border-t">
                                   {missingFields.length > 0 ? (
-                                    <div className="text-red-500 text-sm">
-                                      <span className="flex items-center justify-center">
-                                        <AlertCircle size={14} className="mr-1" />
-                                        Missing
-                                      </span>
-                                      <div className="text-xs mt-1">
+                                    <div className="flex flex-col items-center">
+                                      <AlertCircle size={16} className="text-red-500" />
+                                      <div className="text-xs text-red-500 mt-1">
                                         {missingFields.map(field => (
                                           <div key={field}>{field}</div>
                                         ))}
                                       </div>
                                     </div>
                                   ) : (
-                                    <span className="text-green-500 flex items-center justify-center">
-                                      <CheckCircle size={14} className="mr-1" />
-                                      Found
-                                    </span>
+                                    <CheckCircle size={16} className="mx-auto text-green-500" />
                                   )}
                                 </td>
                               );
                             })}
-                            
-                            <td className="p-2">
-                              <div className="flex justify-center gap-1">
-                                <button 
-                                  className="p-1 hover:bg-gray-100 rounded"
-                                  title="Copy UUID" 
-                                  onClick={() => {
-                                    if (answerId) navigator.clipboard.writeText(answerId);
-                                  }}
-                                >
-                                  <Copy size={14} />
-                                </button>
-                              </div>
-                            </td>
                           </tr>
                         );
                       })}
