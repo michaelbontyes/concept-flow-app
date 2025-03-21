@@ -480,8 +480,10 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
     
     environments.forEach(env => {
       // Initialize counters
-      let totalFields = 0;
-      let foundFields = 0;
+      let totalQuestions = 0;
+      let foundQuestions = 0;
+      let totalAnswers = 0;
+      let foundAnswers = 0;
       const formsWithData = new Set();
       
       // Process each item in the merged report
@@ -490,46 +492,48 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
         
         let hasFieldsForEnv = false;
         
-        // Count question fields
+        // Count this as a question
+        totalQuestions++;
+        
+        // Check if question is found (all required fields are present)
+        let questionFound = true;
         ['externalId', 'question', 'translation', 'datatype'].forEach(field => {
-          if (item[field] && item[field][env] !== undefined) {
-            totalFields++;
-            if (item[field][env] === 'Found') {
-              foundFields++;
-              hasFieldsForEnv = true;
-            }
+          if (item[field] && item[field][env] !== undefined && item[field][env] === 'Missing') {
+            questionFound = false;
           }
         });
         
-        // Count DHIS2-specific fields only for DHIS2 environments
-        if (env.includes('DHIS2') && item.dhis2DeUid && item.dhis2DeUid[env] !== undefined) {
-          totalFields++;
-          if (item.dhis2DeUid[env] === 'Found') {
-            foundFields++;
-            hasFieldsForEnv = true;
-          }
+        // For DHIS2 environments, check DHIS2-specific fields
+        if (env.includes('DHIS2') && item.dhis2DeUid && item.dhis2DeUid[env] === 'Missing') {
+          questionFound = false;
         }
         
-        // Count answer fields
+        if (questionFound) {
+          foundQuestions++;
+          hasFieldsForEnv = true;
+        }
+        
+        // Count answers
         if (item.answers && Array.isArray(item.answers)) {
           item.answers.forEach((answer: any) => {
+            totalAnswers++;
+            
+            // Check if answer is found (all required fields are present)
+            let answerFound = true;
             ['externalId', 'answer', 'translation'].forEach(field => {
-              if (answer[field] && answer[field][env] !== undefined) {
-                totalFields++;
-                if (answer[field][env] === 'Found') {
-                  foundFields++;
-                  hasFieldsForEnv = true;
-                }
+              if (answer[field] && answer[field][env] !== undefined && answer[field][env] === 'Missing') {
+                answerFound = false;
               }
             });
             
-            // Count DHIS2-specific answer fields
-            if (env.includes('DHIS2') && answer.dhis2OptionUid && answer.dhis2OptionUid[env] !== undefined) {
-              totalFields++;
-              if (answer.dhis2OptionUid[env] === 'Found') {
-                foundFields++;
-                hasFieldsForEnv = true;
-              }
+            // For DHIS2 environments, check DHIS2-specific fields
+            if (env.includes('DHIS2') && answer.dhis2OptionUid && answer.dhis2OptionUid[env] === 'Missing') {
+              answerFound = false;
+            }
+            
+            if (answerFound) {
+              foundAnswers++;
+              hasFieldsForEnv = true;
             }
           });
         }
@@ -541,8 +545,9 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
       });
       
       // Calculate percentages and prepare stats
-      const missingFields = totalFields - foundFields;
-      const fieldCompletionPercentage = totalFields > 0 ? Math.round((foundFields / totalFields) * 100) : 100;
+      const totalItems = totalQuestions + totalAnswers;
+      const foundItems = foundQuestions + foundAnswers;
+      const completionPercentage = totalItems > 0 ? Math.round((foundItems / totalItems) * 100) : 100;
       
       // Get form counts
       const totalForms = allFormNames.length;
@@ -551,10 +556,15 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
       
       // Store stats for this environment
       envStats[env] = {
-        totalFields,
-        foundFields,
-        missingFields,
-        fieldCompletionPercentage,
+        totalQuestions,
+        foundQuestions,
+        questionCompletionPercentage: totalQuestions > 0 ? Math.round((foundQuestions / totalQuestions) * 100) : 100,
+        totalAnswers,
+        foundAnswers,
+        answerCompletionPercentage: totalAnswers > 0 ? Math.round((foundAnswers / totalAnswers) * 100) : 100,
+        totalItems,
+        foundItems,
+        completionPercentage,
         totalForms,
         formsCounted,
         formCompletionPercentage
@@ -609,40 +619,73 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {Object.entries(calculateEnvironmentStats()).map(([env, stats]: [string, any]) => (
             <div key={env} className="bg-white p-4 rounded-lg shadow-sm border border-foreground/10">
-              <h3 className="text-lg font-semibold mb-2">{env}</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-foreground/5 p-2 rounded">
-                  <p className="text-xs text-foreground/60">Forms</p>
-                  <div className="flex justify-between items-center">
-                    <p className="text-lg font-medium">
-                      {stats.formsCounted}/{stats.totalForms}
-                    </p>
-                    <span className={`text-sm ${stats.formCompletionPercentage === 100 ? 'text-green-600' : 'text-amber-600'}`}>
+              <h3 className="text-lg font-semibold mb-3">{env}</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Forms stat */}
+                <div className="bg-foreground/5 p-3 rounded flex flex-col">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Forms</span>
+                    <span className={`text-lg font-bold ${
+                      stats.formCompletionPercentage === 100 ? 'text-green-600' : 
+                      stats.formCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
+                    }`}>
                       {stats.formCompletionPercentage}%
                     </span>
                   </div>
+                  <p className="text-xs text-foreground/60 self-end">
+                    {stats.formsCounted}/{stats.totalForms} forms found
+                  </p>
                 </div>
                 
-                <div className="bg-foreground/5 p-2 rounded">
-                  <p className="text-xs text-foreground/60">Questions & Answers</p>
-                  <div className="flex justify-between items-center">
-                    <p className="text-lg font-medium">
-                      {stats.foundFields}/{stats.totalFields}
-                    </p>
-                    <span className={`text-sm ${stats.fieldCompletionPercentage === 100 ? 'text-green-600' : 'text-amber-600'}`}>
-                      {stats.fieldCompletionPercentage}%
+                {/* Questions stat */}
+                <div className="bg-foreground/5 p-3 rounded flex flex-col">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Questions</span>
+                    <span className={`text-lg font-bold ${
+                      stats.questionCompletionPercentage === 100 ? 'text-green-600' : 
+                      stats.questionCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
+                    }`}>
+                      {stats.questionCompletionPercentage}%
                     </span>
                   </div>
+                  <p className="text-xs text-foreground/60 self-end">
+                    {stats.foundQuestions}/{stats.totalQuestions} complete
+                  </p>
                 </div>
                 
-                <div className={`p-2 rounded col-span-2 ${stats.missingFields > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-                  <p className="text-xs text-foreground/60">Missing Fields</p>
-                  <div className="flex justify-between items-center">
-                    <p className="text-lg font-medium">{stats.missingFields}</p>
-                    <span className={`text-sm ${stats.missingFields === 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stats.missingFields === 0 ? 'Complete ✓' : `${100 - stats.fieldCompletionPercentage}% Missing`}
+                {/* Answers stat */}
+                <div className="bg-foreground/5 p-3 rounded flex flex-col">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Answers</span>
+                    <span className={`text-lg font-bold ${
+                      stats.answerCompletionPercentage === 100 ? 'text-green-600' : 
+                      stats.answerCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
+                    }`}>
+                      {stats.answerCompletionPercentage}%
                     </span>
                   </div>
+                  <p className="text-xs text-foreground/60 self-end">
+                    {stats.foundAnswers}/{stats.totalAnswers} complete
+                  </p>
+                </div>
+                
+                {/* Overall completion stat */}
+                <div className={`p-3 rounded flex flex-col ${
+                  stats.completionPercentage === 100 ? 'bg-green-50' : 
+                  stats.completionPercentage >= 80 ? 'bg-amber-50' : 'bg-red-50'
+                }`}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Overall</span>
+                    <span className={`text-lg font-bold ${
+                      stats.completionPercentage === 100 ? 'text-green-600' : 
+                      stats.completionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
+                    }`}>
+                      {stats.completionPercentage}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-foreground/60 self-end">
+                    {stats.foundItems}/{stats.totalItems} items complete
+                  </p>
                 </div>
               </div>
             </div>
