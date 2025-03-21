@@ -1,7 +1,9 @@
 "use client";
 
-import { Fragment } from 'react';
-import { ChevronDown, ChevronRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Copy, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface FormDetailsProps {
   formName: string;
@@ -22,9 +24,19 @@ export default function FormDetails({
   expandedQuestions,
   toggleQuestion
 }: FormDetailsProps) {
-  if (!report?.content?.mergedReport) return null;
-  
-  const formItems = report.content.mergedReport.filter((item: any) => item.formName === formName);
+  // Add state for selected items
+  const [selectedItems, setSelectedItems] = useState<{
+    questions: string[];
+    answers: string[];
+  }>({
+    questions: [],
+    answers: []
+  });
+
+  // Get form items from the report
+  const formItems = report?.content?.mergedReport?.filter((item: any) => 
+    item.formName === formName
+  ) || [];
   
   // Filter items based on showOnlyFaulty flag
   const filteredItems = showOnlyFaulty 
@@ -46,29 +58,175 @@ export default function FormDetails({
         return hasMissingFields || hasAnswerProblems;
       })
     : formItems;
-  
+
+  // Toggle question selection
+  const toggleQuestionSelection = (questionId: string) => {
+    setSelectedItems(prev => ({
+      ...prev,
+      questions: prev.questions.includes(questionId)
+        ? prev.questions.filter(id => id !== questionId)
+        : [...prev.questions, questionId]
+    }));
+  };
+
+  // Toggle answer selection
+  const toggleAnswerSelection = (answerId: string) => {
+    setSelectedItems(prev => ({
+      ...prev,
+      answers: prev.answers.includes(answerId)
+        ? prev.answers.filter(id => id !== answerId)
+        : [...prev.answers, answerId]
+    }));
+  };
+
+  // Select all missing items for an environment
+  const selectAllMissingItems = (env: string) => {
+    const missingQuestionIds = formItems
+      .filter(item => {
+        return ['externalId', 'question', 'translation', 'datatype', 'dhis2DeUid'].some(field => 
+          item[field] && item[field][env] === 'Missing'
+        );
+      })
+      .map(item => item.externalId?.value)
+      .filter(Boolean);
+    
+    let missingAnswerIds: string[] = [];
+    formItems.forEach(item => {
+      if (item.answers) {
+        const answerIds = item.answers
+          .filter(answer => 
+            ['externalId', 'answer', 'translation', 'dhis2OptionUid'].some(field => 
+              answer[field] && answer[field][env] === 'Missing'
+            )
+          )
+          .map(answer => answer.externalId?.value)
+          .filter(Boolean);
+        
+        missingAnswerIds = [...missingAnswerIds, ...answerIds];
+      }
+    });
+    
+    setSelectedItems({
+      questions: [...new Set([...selectedItems.questions, ...missingQuestionIds])],
+      answers: [...new Set([...selectedItems.answers, ...missingAnswerIds])]
+    });
+  };
+
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedItems({
+      questions: [],
+      answers: []
+    });
+  };
+
+  // Handle actions
+  const handleAddToSource = (env: string) => {
+    console.log(`Adding ${selectedItems.questions.length} questions and ${selectedItems.answers.length} answers to ${env} source`);
+    // API call implementation
+  };
+
+  const handleCloneUUIDs = () => {
+    console.log(`Cloning ${selectedItems.questions.length} questions and ${selectedItems.answers.length} answers`);
+    // Implementation
+  };
+
   return (
     <div className="p-4 bg-white">
-      <div className="mb-4 flex justify-end">
-        <label className="flex items-center cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={showOnlyFaulty} 
-            onChange={toggleFaultyFilter}
-            className="mr-2"
-          />
-          <span>Show only items with issues</span>
-        </label>
+      <div className="mb-4 flex justify-between">
+        <div className="flex items-center space-x-2">
+          {selectedItems.questions.length > 0 || selectedItems.answers.length > 0 ? (
+            <>
+              <span className="text-sm">
+                {selectedItems.questions.length + selectedItems.answers.length} items selected
+              </span>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={clearSelection}
+              >
+                Clear
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleCloneUUIDs}
+              >
+                Clone UUIDs
+              </Button>
+              {environments.map(env => (
+                <Button 
+                  key={env}
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => handleAddToSource(env)}
+                >
+                  Add to {env}
+                </Button>
+              ))}
+            </>
+          ) : (
+            <span className="text-sm text-gray-500">Select items to perform actions</span>
+          )}
+        </div>
+        <div className="flex items-center space-x-4">
+          {environments.map(env => (
+            <Button 
+              key={env}
+              size="sm" 
+              variant="outline" 
+              onClick={() => selectAllMissingItems(env)}
+            >
+              Select all missing in {env}
+            </Button>
+          ))}
+          <label className="flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={showOnlyFaulty} 
+              onChange={toggleFaultyFilter}
+              className="mr-2"
+            />
+            <span>Show only items with issues</span>
+          </label>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-gray-50">
+              <th className="p-2 w-8 text-center">
+                <Checkbox 
+                  checked={filteredItems.length > 0 && 
+                    filteredItems.every(item => selectedItems.questions.includes(item.externalId?.value))}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedItems(prev => ({
+                        ...prev,
+                        questions: [...new Set([
+                          ...prev.questions, 
+                          ...filteredItems
+                            .map(item => item.externalId?.value)
+                            .filter(Boolean)
+                        ])]
+                      }));
+                    } else {
+                      setSelectedItems(prev => ({
+                        ...prev,
+                        questions: prev.questions.filter(id => 
+                          !filteredItems.find(item => item.externalId?.value === id)
+                        )
+                      }));
+                    }
+                  }}
+                />
+              </th>
               <th className="p-2 text-left">Question</th>
               <th className="p-2 text-left">UUID</th>
               {environments.map(env => (
                 <th key={env} className="p-2 text-center">{env}</th>
               ))}
+              <th className="p-2 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -89,8 +247,14 @@ export default function FormDetails({
               });
               
               return (
-                <Fragment key={questionId || idx}>
-                  <tr className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                <>
+                  <tr key={questionId || idx} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                    <td className="p-2 text-center">
+                      <Checkbox 
+                        checked={selectedItems.questions.includes(questionId)}
+                        onCheckedChange={() => toggleQuestionSelection(questionId)}
+                      />
+                    </td>
                     <td className="p-2 relative cursor-pointer" onClick={() => toggleQuestion(questionId)}>
                       <div className="flex items-center">
                         {(item.answers && item.answers.length > 0) ? (
@@ -115,14 +279,12 @@ export default function FormDetails({
                     {environments.map(env => {
                       const missingFields = [];
                       
-                      // Check which fields are missing for this environment
                       ['externalId', 'question', 'translation', 'datatype'].forEach(field => {
                         if (item[field] && item[field][env] === 'Missing') {
                           missingFields.push(field);
                         }
                       });
                       
-                      // For DHIS2 environments, check DHIS2-specific fields
                       if (env.includes('DHIS2') && item.dhis2DeUid && item.dhis2DeUid[env] === 'Missing') {
                         missingFields.push('dhis2DeUid');
                       }
@@ -144,6 +306,33 @@ export default function FormDetails({
                         </td>
                       );
                     })}
+                    
+                    <td className="p-2">
+                      <div className="flex justify-center gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-8 w-8 p-0" 
+                          title="Copy UUID" 
+                          onClick={() => {
+                            if (questionId) navigator.clipboard.writeText(questionId);
+                          }}
+                        >
+                          <Copy size={14} />
+                        </Button>
+                        {itemHasMissing && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0" 
+                            title="Add to OCL Source" 
+                            onClick={() => handleAddToSource('OCL')}
+                          >
+                            <Plus size={14} className="text-blue-600" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                   
                   {item.answers && item.answers.length > 0 && expandedQuestions[questionId] && (
@@ -160,6 +349,12 @@ export default function FormDetails({
                         
                         return (
                           <tr key={answerId || `answer-${ansIdx}`} className="bg-gray-50/50">
+                            <td className="p-2 text-center border-t">
+                              <Checkbox 
+                                checked={selectedItems.answers.includes(answerId)}
+                                onCheckedChange={() => toggleAnswerSelection(answerId)}
+                              />
+                            </td>
                             <td className="p-2 pl-8 border-t">
                               <div className="flex items-center">
                                 <span className="text-gray-500">↳</span>
@@ -171,14 +366,12 @@ export default function FormDetails({
                             {environments.map(env => {
                               const missingFields = [];
                               
-                              // Check which fields are missing for this environment
                               ['externalId', 'answer', 'translation'].forEach(field => {
                                 if (answer[field] && answer[field][env] === 'Missing') {
                                   missingFields.push(field);
                                 }
                               });
                               
-                              // For DHIS2 environments, check DHIS2-specific fields
                               if (env.includes('DHIS2') && answer.dhis2OptionUid && answer.dhis2OptionUid[env] === 'Missing') {
                                 missingFields.push('dhis2OptionUid');
                               }
@@ -200,12 +393,39 @@ export default function FormDetails({
                                 </td>
                               );
                             })}
+                            
+                            <td className="p-2 border-t">
+                              <div className="flex justify-center gap-1">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0" 
+                                  title="Copy UUID" 
+                                  onClick={() => {
+                                    if (answerId) navigator.clipboard.writeText(answerId);
+                                  }}
+                                >
+                                  <Copy size={14} />
+                                </Button>
+                                {answerHasMissing && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="h-8 w-8 p-0" 
+                                    title="Add to OCL Source" 
+                                    onClick={() => handleAddToSource('OCL')}
+                                  >
+                                    <Plus size={14} className="text-blue-600" />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
                     </>
                   )}
-                </Fragment>
+                </>
               );
             })}
           </tbody>
