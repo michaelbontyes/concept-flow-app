@@ -1,9 +1,22 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import Image from 'next/image';
 
 interface EnvironmentStatsProps {
   environmentStats: Record<string, any>;
+}
+
+// Function to determine logo URL based on environment name
+function getEnvironmentLogo(env: string): string | null {
+  if (env.includes('OCL')) {
+    return 'https://avatars.githubusercontent.com/u/3497578?s=280&v=4';
+  } else if (env.includes('OpenMRS')) {
+    return 'https://avatars.githubusercontent.com/u/860776?s=280&v=4';
+  } else if (env.includes('DHIS2')) {
+    return 'https://avatars.githubusercontent.com/u/1089987?s=280&v=4';
+  }
+  return null;
 }
 
 export function calculateEnvironmentStats(report: any) {
@@ -119,79 +132,94 @@ function getFormNames(report: any) {
 export default function EnvironmentStats({ environmentStats }: EnvironmentStatsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      {Object.entries(environmentStats).map(([env, stats]: [string, any]) => (
-        <div key={env} className="bg-white p-4 rounded-lg shadow-sm border border-foreground/10">
-          <h3 className="text-lg font-semibold mb-3">{env}</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {/* Forms stat */}
-            <div className="bg-foreground/5 p-3 rounded flex flex-col">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium">Forms</span>
-                <span className={`text-lg font-bold ${
-                  stats.formCompletionPercentage === 100 ? 'text-green-600' : 
-                  stats.formCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
-                }`}>
-                  {stats.formCompletionPercentage}%
-                </span>
+      {Object.entries(environmentStats).map(([env, stats]: [string, any]) => {
+        const logoUrl = getEnvironmentLogo(env);
+        
+        return (
+          <div key={env} className="bg-white p-4 rounded-lg shadow-sm border border-foreground/10">
+            <h3 className="text-lg font-semibold mb-3 flex items-center">
+              {logoUrl && (
+                <Image 
+                  src={logoUrl} 
+                  alt={`${env} logo`} 
+                  width={24} 
+                  height={24} 
+                  className="mr-2 rounded-sm"
+                />
+              )}
+              {env}
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Forms stat */}
+              <div className="bg-foreground/5 p-3 rounded flex flex-col">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium">Forms</span>
+                  <span className={`text-lg font-bold ${
+                    stats.formCompletionPercentage === 100 ? 'text-green-600' : 
+                    stats.formCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
+                  }`}>
+                    {stats.formCompletionPercentage}%
+                  </span>
+                </div>
+                <p className="text-xs text-foreground/60 self-end">
+                  {stats.formsCounted}/{stats.totalForms} forms found
+                </p>
               </div>
-              <p className="text-xs text-foreground/60 self-end">
-                {stats.formsCounted}/{stats.totalForms} forms found
-              </p>
-            </div>
-            
-            {/* Questions stat */}
-            <div className="bg-foreground/5 p-3 rounded flex flex-col">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium">Questions</span>
-                <span className={`text-lg font-bold ${
-                  stats.questionCompletionPercentage === 100 ? 'text-green-600' : 
-                  stats.questionCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
-                }`}>
-                  {stats.questionCompletionPercentage}%
-                </span>
+              
+              {/* Questions stat */}
+              <div className="bg-foreground/5 p-3 rounded flex flex-col">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium">Questions</span>
+                  <span className={`text-lg font-bold ${
+                    stats.questionCompletionPercentage === 100 ? 'text-green-600' : 
+                    stats.questionCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
+                  }`}>
+                    {stats.questionCompletionPercentage}%
+                  </span>
+                </div>
+                <p className="text-xs text-foreground/60 self-end">
+                  {stats.foundQuestions}/{stats.totalQuestions} complete
+                </p>
               </div>
-              <p className="text-xs text-foreground/60 self-end">
-                {stats.foundQuestions}/{stats.totalQuestions} complete
-              </p>
-            </div>
-            
-            {/* Answers stat */}
-            <div className="bg-foreground/5 p-3 rounded flex flex-col">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium">Answers</span>
-                <span className={`text-lg font-bold ${
-                  stats.answerCompletionPercentage === 100 ? 'text-green-600' : 
-                  stats.answerCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
-                }`}>
-                  {stats.answerCompletionPercentage}%
-                </span>
+              
+              {/* Answers stat */}
+              <div className="bg-foreground/5 p-3 rounded flex flex-col">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium">Answers</span>
+                  <span className={`text-lg font-bold ${
+                    stats.answerCompletionPercentage === 100 ? 'text-green-600' : 
+                    stats.answerCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
+                  }`}>
+                    {stats.answerCompletionPercentage}%
+                  </span>
+                </div>
+                <p className="text-xs text-foreground/60 self-end">
+                  {stats.foundAnswers}/{stats.totalAnswers} complete
+                </p>
               </div>
-              <p className="text-xs text-foreground/60 self-end">
-                {stats.foundAnswers}/{stats.totalAnswers} complete
-              </p>
-            </div>
-            
-            {/* Overall completion stat */}
-            <div className={`p-3 rounded flex flex-col ${
-              stats.completionPercentage === 100 ? 'bg-green-50' : 
-              stats.completionPercentage >= 80 ? 'bg-amber-50' : 'bg-red-50'
-            }`}>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium">Overall</span>
-                <span className={`text-lg font-bold ${
-                  stats.completionPercentage === 100 ? 'text-green-600' : 
-                  stats.completionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
-                }`}>
-                  {stats.completionPercentage}%
-                </span>
+              
+              {/* Overall completion stat */}
+              <div className={`p-3 rounded flex flex-col ${
+                stats.completionPercentage === 100 ? 'bg-green-50' : 
+                stats.completionPercentage >= 80 ? 'bg-amber-50' : 'bg-red-50'
+              }`}>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm font-medium">Overall</span>
+                  <span className={`text-lg font-bold ${
+                    stats.completionPercentage === 100 ? 'text-green-600' : 
+                    stats.completionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
+                  }`}>
+                    {stats.completionPercentage}%
+                  </span>
+                </div>
+                <p className="text-xs text-foreground/60 self-end">
+                  {stats.foundItems}/{stats.totalItems} items complete
+                </p>
               </div>
-              <p className="text-xs text-foreground/60 self-end">
-                {stats.foundItems}/{stats.totalItems} items complete
-              </p>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
