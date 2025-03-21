@@ -1,11 +1,18 @@
-"use client";
-
 import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@/utils/supabase';
 import MatrixView from './report/MatrixView';
 import RawView from './report/RawView';
-import { ChevronDown, ChevronRight, AlertCircle, CheckCircle, Copy } from 'lucide-react';
+import { ChevronDown, ChevronRight, AlertCircle, CheckCircle, Copy, RefreshCw } from 'lucide-react';
 import { Fragment } from 'react';
+import EnvironmentStats, { calculateEnvironmentStats } from './report/EnvironmentStats';
+import { Button } from '@/components/ui/button';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog';
 
 interface ReportMatrixProps {
   projectId: string | null;
@@ -20,13 +27,51 @@ interface Report {
 
 export default function ReportMatrix({ projectId }: ReportMatrixProps) {
   const [report, setReport] = useState<Report | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('matrix');
+  const [view, setView] = useState<'matrix' | 'raw'>('matrix');
+  const [activeTab, setActiveTab] = useState<'matrix' | 'raw'>('matrix');
   const [expandedForms, setExpandedForms] = useState<Record<string, boolean>>({});
   const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
-  const [showOnlyFaulty, setShowOnlyFaulty] = useState<boolean>(true);
+  const [showOnlyFaulty, setShowOnlyFaulty] = useState(false);
+  const [verificationResults, setVerificationResults] = useState<any[] | null>(null);
+  const [showResultsDialog, setShowResultsDialog] = useState(false);
   
+  // Add the triggerVerificationForAll function
+  const triggerVerificationForAll = async (environments: string[]) => {
+    try {
+      // Show loading message
+      console.log(`Triggering verification for ${environments.length} environments...`);
+      
+      // Make a single API call with all environments
+      const response = await fetch('https://app.openfn.org/i/de51f57b-87c2-4b7d-837a-6b2b978f31f7', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          environments: environments,
+          timestamp: new Date().toISOString(),
+          action: 'trigger-verification'
+        }),
+      });
+      
+      // Create a single result object
+      const results = [{
+        environments: environments.join(', '),
+        success: response.ok,
+        status: response.status
+      }];
+      
+      // Store results and show dialog
+      setVerificationResults(results);
+      setShowResultsDialog(true);
+      
+    } catch (error) {
+      console.error('Error triggering verification:', error);
+    }
+  };
+
   const supabase = createBrowserClient();
   
   useEffect(() => {
@@ -471,109 +516,6 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
     );
   };
 
-  const calculateEnvironmentStats = () => {
-    if (!report?.content?.mergedReport) return {};
-    
-    const environments = getEnvironments();
-    const allFormNames = getFormNames();
-    const envStats = {};
-    
-    environments.forEach(env => {
-      // Initialize counters
-      let totalQuestions = 0;
-      let foundQuestions = 0;
-      let totalAnswers = 0;
-      let foundAnswers = 0;
-      const formsWithData = new Set();
-      
-      // Process each item in the merged report
-      report.content.mergedReport.forEach((item: any) => {
-        if (!item.formName) return;
-        
-        let hasFieldsForEnv = false;
-        
-        // Count this as a question
-        totalQuestions++;
-        
-        // Check if question is found (all required fields are present)
-        let questionFound = true;
-        ['externalId', 'question', 'translation', 'datatype'].forEach(field => {
-          if (item[field] && item[field][env] !== undefined && item[field][env] === 'Missing') {
-            questionFound = false;
-          }
-        });
-        
-        // For DHIS2 environments, check DHIS2-specific fields
-        if (env.includes('DHIS2') && item.dhis2DeUid && item.dhis2DeUid[env] === 'Missing') {
-          questionFound = false;
-        }
-        
-        if (questionFound) {
-          foundQuestions++;
-          hasFieldsForEnv = true;
-        }
-        
-        // Count answers
-        if (item.answers && Array.isArray(item.answers)) {
-          item.answers.forEach((answer: any) => {
-            totalAnswers++;
-            
-            // Check if answer is found (all required fields are present)
-            let answerFound = true;
-            ['externalId', 'answer', 'translation'].forEach(field => {
-              if (answer[field] && answer[field][env] !== undefined && answer[field][env] === 'Missing') {
-                answerFound = false;
-              }
-            });
-            
-            // For DHIS2 environments, check DHIS2-specific fields
-            if (env.includes('DHIS2') && answer.dhis2OptionUid && answer.dhis2OptionUid[env] === 'Missing') {
-              answerFound = false;
-            }
-            
-            if (answerFound) {
-              foundAnswers++;
-              hasFieldsForEnv = true;
-            }
-          });
-        }
-        
-        // If this form has any fields for this environment, count it
-        if (hasFieldsForEnv) {
-          formsWithData.add(item.formName);
-        }
-      });
-      
-      // Calculate percentages and prepare stats
-      const totalItems = totalQuestions + totalAnswers;
-      const foundItems = foundQuestions + foundAnswers;
-      const completionPercentage = totalItems > 0 ? Math.round((foundItems / totalItems) * 100) : 100;
-      
-      // Get form counts
-      const totalForms = allFormNames.length;
-      const formsCounted = formsWithData.size;
-      const formCompletionPercentage = totalForms > 0 ? Math.round((formsCounted / totalForms) * 100) : 100;
-      
-      // Store stats for this environment
-      envStats[env] = {
-        totalQuestions,
-        foundQuestions,
-        questionCompletionPercentage: totalQuestions > 0 ? Math.round((foundQuestions / totalQuestions) * 100) : 100,
-        totalAnswers,
-        foundAnswers,
-        answerCompletionPercentage: totalAnswers > 0 ? Math.round((foundAnswers / totalAnswers) * 100) : 100,
-        totalItems,
-        foundItems,
-        completionPercentage,
-        totalForms,
-        formsCounted,
-        formCompletionPercentage
-      };
-    });
-    
-    return envStats;
-  };
-
   if (!projectId) {
     return null;
   }
@@ -606,114 +548,93 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
   }
   
   return (
-    <div className="w-full bg-foreground/5 p-6 rounded-lg mt-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Latest Report</h2>
-        <div className="text-sm text-foreground/60">
-          Generated: {new Date(report.created_at).toLocaleString()}
-        </div>
-      </div>
-
-      {/* Summary stats section */}
-      {report?.content?.mergedReport && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {Object.entries(calculateEnvironmentStats()).map(([env, stats]: [string, any]) => (
-            <div key={env} className="bg-white p-4 rounded-lg shadow-sm border border-foreground/10">
-              <h3 className="text-lg font-semibold mb-3">{env}</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {/* Forms stat */}
-                <div className="bg-foreground/5 p-3 rounded flex flex-col">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">Forms</span>
-                    <span className={`text-lg font-bold ${
-                      stats.formCompletionPercentage === 100 ? 'text-green-600' : 
-                      stats.formCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
-                    }`}>
-                      {stats.formCompletionPercentage}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-foreground/60 self-end">
-                    {stats.formsCounted}/{stats.totalForms} forms found
-                  </p>
-                </div>
-                
-                {/* Questions stat */}
-                <div className="bg-foreground/5 p-3 rounded flex flex-col">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">Questions</span>
-                    <span className={`text-lg font-bold ${
-                      stats.questionCompletionPercentage === 100 ? 'text-green-600' : 
-                      stats.questionCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
-                    }`}>
-                      {stats.questionCompletionPercentage}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-foreground/60 self-end">
-                    {stats.foundQuestions}/{stats.totalQuestions} complete
-                  </p>
-                </div>
-                
-                {/* Answers stat */}
-                <div className="bg-foreground/5 p-3 rounded flex flex-col">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">Answers</span>
-                    <span className={`text-lg font-bold ${
-                      stats.answerCompletionPercentage === 100 ? 'text-green-600' : 
-                      stats.answerCompletionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
-                    }`}>
-                      {stats.answerCompletionPercentage}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-foreground/60 self-end">
-                    {stats.foundAnswers}/{stats.totalAnswers} complete
-                  </p>
-                </div>
-                
-                {/* Overall completion stat */}
-                <div className={`p-3 rounded flex flex-col ${
-                  stats.completionPercentage === 100 ? 'bg-green-50' : 
-                  stats.completionPercentage >= 80 ? 'bg-amber-50' : 'bg-red-50'
-                }`}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-medium">Overall</span>
-                    <span className={`text-lg font-bold ${
-                      stats.completionPercentage === 100 ? 'text-green-600' : 
-                      stats.completionPercentage >= 80 ? 'text-amber-600' : 'text-red-600'
-                    }`}>
-                      {stats.completionPercentage}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-foreground/60 self-end">
-                    {stats.foundItems}/{stats.totalItems} items complete
-                  </p>
-                </div>
-              </div>
+    <>
+      <div className="w-full bg-foreground/5 p-6 rounded-lg mt-4">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-2xl font-bold">Latest Report</h2>
+            <div className="text-sm text-foreground/60 mt-1">
+              Generated: {new Date(report.created_at).toLocaleString()}
             </div>
-          ))}
+          </div>
+          <Button 
+            onClick={() => triggerVerificationForAll(Object.keys(report.content.stats))}
+            className="flex items-center gap-2"
+            size="sm"
+          >
+            <RefreshCw size={16} />
+            <span>Trigger Verification</span>
+          </Button>
         </div>
-      )}
 
-      <div className="w-full">
-        <div className="mb-4 border-b">
-          <button 
-            className={`px-4 py-2 ${activeTab === 'matrix' ? 'border-b-2 border-primary font-medium' : ''}`}
-            onClick={() => setActiveTab('matrix')}
-          >
-            Matrix View
-          </button>
-          <button 
-            className={`px-4 py-2 ${activeTab === 'raw' ? 'border-b-2 border-primary font-medium' : ''}`}
-            onClick={() => setActiveTab('raw')}
-          >
-            Raw JSON
-          </button>
-        </div>
-        
-        <div>
-          {activeTab === 'matrix' && renderMatrixView()}
-          {activeTab === 'raw' && renderRawView()}
+        {/* Summary stats section */}
+        {report?.content?.mergedReport && (
+          <EnvironmentStats environmentStats={calculateEnvironmentStats(report)} />
+        )}
+
+        <div className="w-full">
+          <div className="mb-4 border-b">
+            <button 
+              className={`px-4 py-2 ${activeTab === 'matrix' ? 'border-b-2 border-primary font-medium' : ''}`}
+              onClick={() => setActiveTab('matrix')}
+            >
+              Matrix View
+            </button>
+            <button 
+              className={`px-4 py-2 ${activeTab === 'raw' ? 'border-b-2 border-primary font-medium' : ''}`}
+              onClick={() => setActiveTab('raw')}
+            >
+              Raw JSON
+            </button>
+          </div>
+          
+          <div>
+            {activeTab === 'matrix' && renderMatrixView()}
+            {activeTab === 'raw' && renderRawView()}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Results Dialog */}
+      <Dialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verification Results</DialogTitle>
+            <DialogDescription>
+              Results from triggering verification for {verificationResults?.length || 0} environments
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="max-h-[60vh] overflow-y-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">Environment</th>
+                  <th className="text-left py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {verificationResults?.map((result, index) => (
+                  <tr key={index} className="border-b">
+                    <td className="py-2">{result.environment}</td>
+                    <td className="py-2">
+                      <span className={`inline-flex items-center ${result.success ? 'text-green-600' : 'text-red-600'}`}>
+                        {result.success ? (
+                          <><CheckCircle size={16} className="mr-1" /> Success</>
+                        ) : (
+                          <><AlertCircle size={16} className="mr-1" /> Failed ({result.status})</>
+                        )}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <Button onClick={() => setShowResultsDialog(false)}>Close</Button>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 } 
