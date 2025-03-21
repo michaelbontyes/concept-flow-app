@@ -100,7 +100,7 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
   const getFormNames = () => {
     if (!report?.content?.mergedReport) return [];
     const formNames = report.content.mergedReport.map((item: any) => item.formName);
-    return [...new Set(formNames)];
+    return [...new Set(formNames)].filter(Boolean); // Remove duplicates and empty values
   };
 
   // Get environments from the report
@@ -471,6 +471,99 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
     );
   };
 
+  const calculateEnvironmentStats = () => {
+    if (!report?.content?.mergedReport) return {};
+    
+    const environments = getEnvironments();
+    const allFormNames = getFormNames();
+    const envStats = {};
+    
+    environments.forEach(env => {
+      // Initialize counters
+      let totalFields = 0;
+      let foundFields = 0;
+      const formsWithData = new Set();
+      
+      // Process each item in the merged report
+      report.content.mergedReport.forEach((item: any) => {
+        if (!item.formName) return;
+        
+        let hasFieldsForEnv = false;
+        
+        // Count question fields
+        ['externalId', 'question', 'translation', 'datatype'].forEach(field => {
+          if (item[field] && item[field][env] !== undefined) {
+            totalFields++;
+            if (item[field][env] === 'Found') {
+              foundFields++;
+              hasFieldsForEnv = true;
+            }
+          }
+        });
+        
+        // Count DHIS2-specific fields only for DHIS2 environments
+        if (env.includes('DHIS2') && item.dhis2DeUid && item.dhis2DeUid[env] !== undefined) {
+          totalFields++;
+          if (item.dhis2DeUid[env] === 'Found') {
+            foundFields++;
+            hasFieldsForEnv = true;
+          }
+        }
+        
+        // Count answer fields
+        if (item.answers && Array.isArray(item.answers)) {
+          item.answers.forEach((answer: any) => {
+            ['externalId', 'answer', 'translation'].forEach(field => {
+              if (answer[field] && answer[field][env] !== undefined) {
+                totalFields++;
+                if (answer[field][env] === 'Found') {
+                  foundFields++;
+                  hasFieldsForEnv = true;
+                }
+              }
+            });
+            
+            // Count DHIS2-specific answer fields
+            if (env.includes('DHIS2') && answer.dhis2OptionUid && answer.dhis2OptionUid[env] !== undefined) {
+              totalFields++;
+              if (answer.dhis2OptionUid[env] === 'Found') {
+                foundFields++;
+                hasFieldsForEnv = true;
+              }
+            }
+          });
+        }
+        
+        // If this form has any fields for this environment, count it
+        if (hasFieldsForEnv) {
+          formsWithData.add(item.formName);
+        }
+      });
+      
+      // Calculate percentages and prepare stats
+      const missingFields = totalFields - foundFields;
+      const fieldCompletionPercentage = totalFields > 0 ? Math.round((foundFields / totalFields) * 100) : 100;
+      
+      // Get form counts
+      const totalForms = allFormNames.length;
+      const formsCounted = formsWithData.size;
+      const formCompletionPercentage = totalForms > 0 ? Math.round((formsCounted / totalForms) * 100) : 100;
+      
+      // Store stats for this environment
+      envStats[env] = {
+        totalFields,
+        foundFields,
+        missingFields,
+        fieldCompletionPercentage,
+        totalForms,
+        formsCounted,
+        formCompletionPercentage
+      };
+    });
+    
+    return envStats;
+  };
+
   if (!projectId) {
     return null;
   }
@@ -510,7 +603,53 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
           Generated: {new Date(report.created_at).toLocaleString()}
         </div>
       </div>
-      
+
+      {/* Summary stats section */}
+      {report?.content?.mergedReport && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {Object.entries(calculateEnvironmentStats()).map(([env, stats]: [string, any]) => (
+            <div key={env} className="bg-white p-4 rounded-lg shadow-sm border border-foreground/10">
+              <h3 className="text-lg font-semibold mb-2">{env}</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-foreground/5 p-2 rounded">
+                  <p className="text-xs text-foreground/60">Forms</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-lg font-medium">
+                      {stats.formsCounted}/{stats.totalForms}
+                    </p>
+                    <span className={`text-sm ${stats.formCompletionPercentage === 100 ? 'text-green-600' : 'text-amber-600'}`}>
+                      {stats.formCompletionPercentage}%
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="bg-foreground/5 p-2 rounded">
+                  <p className="text-xs text-foreground/60">Questions & Answers</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-lg font-medium">
+                      {stats.foundFields}/{stats.totalFields}
+                    </p>
+                    <span className={`text-sm ${stats.fieldCompletionPercentage === 100 ? 'text-green-600' : 'text-amber-600'}`}>
+                      {stats.fieldCompletionPercentage}%
+                    </span>
+                  </div>
+                </div>
+                
+                <div className={`p-2 rounded col-span-2 ${stats.missingFields > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                  <p className="text-xs text-foreground/60">Missing Fields</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-lg font-medium">{stats.missingFields}</p>
+                    <span className={`text-sm ${stats.missingFields === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {stats.missingFields === 0 ? 'Complete ✓' : `${100 - stats.fieldCompletionPercentage}% Missing`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="w-full">
         <div className="mb-4 border-b">
           <button 

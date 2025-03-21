@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@/utils/supabase';
 import { User } from '@supabase/supabase-js';
 import ReportMatrix from './ReportMatrix';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Settings, User as UserIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface Organization {
   id: string;
@@ -30,6 +34,7 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [orgProjectCounts, setOrgProjectCounts] = useState<Record<string, number>>({});
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
   const supabase = createBrowserClient();
   
@@ -140,89 +145,155 @@ export default function UserProfile() {
   }
   
   return (
-    <div className="w-full space-y-8">
-      {/* User Profile Section */}
-      <div className="bg-foreground/5 p-6 rounded-lg">
-        <h2 className="text-2xl font-bold mb-4">User Profile</h2>
-        <p><strong>Email:</strong> {user.email}</p>
-        <p><strong>User ID:</strong> {user.id}</p>
-      </div>
-      
-      {/* Organizations Section */}
-      <div className="bg-foreground/5 p-6 rounded-lg">
-        <h2 className="text-2xl font-bold mb-4">Your Organizations</h2>
-        
-        {organizations.length === 0 ? (
-          <p className="text-foreground/70">No organizations found. Create one to get started.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {organizations.map(org => (
-              <div 
-                key={org.id} 
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                  selectedOrg?.id === org.id 
-                    ? 'bg-primary/20 border-primary/50' 
-                    : 'border-foreground/10 bg-foreground/5 hover:bg-foreground/10'
-                }`}
-                onClick={() => setSelectedOrg(org)}
-              >
-                <p className="text-lg font-semibold">{org.name || 'Unnamed Organization'}</p>
-                {org.description && <p className="text-sm text-foreground/70">{org.description}</p>}
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-foreground/50">
-                    {orgProjectCounts[org.id] || 0} project(s)
-                  </span>
-                  {selectedOrg?.id === org.id && (
-                    <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">Selected</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* Projects Section - Only show if an organization is selected */}
-      {selectedOrg && (
-        <div className="bg-foreground/5 p-6 rounded-lg">
-          <h2 className="text-2xl font-bold mb-4">Projects for {selectedOrg.name}</h2>
-          
-          {loading ? (
-            <p>Loading projects...</p>
-          ) : projects.length === 0 ? (
-            <p className="text-foreground/70">No projects found for this organization.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {projects.map(project => (
-                <div 
-                  key={project.id} 
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedProject?.id === project.id 
-                      ? 'bg-primary/20 border-primary/50' 
-                      : 'border-foreground/10 bg-foreground/5 hover:bg-foreground/10'
-                  }`}
-                  onClick={() => setSelectedProject(project)}
-                >
-                  <p className="text-lg font-semibold">{project.name || 'Unnamed Project'}</p>
-                  {project.description && <p className="text-sm text-foreground/70">{project.description}</p>}
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-xs text-foreground/50">
-                      Created: {new Date(project.created_at).toLocaleDateString()}
-                    </span>
-                    {selectedProject?.id === project.id && (
-                      <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">Selected</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+    <div className="w-full space-y-4">
+      {/* Header with current selections and settings button */}
+      <div className="flex justify-between items-center bg-foreground/5 p-3 rounded-lg">
+        <div className="flex items-center gap-2">
+          {selectedOrg && (
+            <div className="flex items-center">
+              <span className="font-medium">{selectedOrg.name}</span>
+              {selectedProject && (
+                <>
+                  <span className="mx-2 text-foreground/30">/</span>
+                  <span className="font-medium">{selectedProject.name}</span>
+                </>
+              )}
             </div>
           )}
+          {!selectedOrg && (
+            <span className="text-foreground/50">No organization selected</span>
+          )}
         </div>
-      )}
+        
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1">
+              <Settings size={16} />
+              <span>Settings</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Project Settings</DialogTitle>
+            </DialogHeader>
+            
+            <Tabs defaultValue="organizations" className="mt-4">
+              <TabsList className="grid grid-cols-3 mb-4">
+                <TabsTrigger value="user">User Profile</TabsTrigger>
+                <TabsTrigger value="organizations">Organizations</TabsTrigger>
+                <TabsTrigger value="projects">Projects</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="user" className="space-y-4">
+                <div className="bg-foreground/5 p-4 rounded-lg">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                      <UserIcon size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">{user.email}</h3>
+                      <p className="text-xs text-foreground/50">User ID: {user.id.substring(0, 8)}...</p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="organizations" className="space-y-4">
+                {organizations.length === 0 ? (
+                  <p className="text-foreground/70">No organizations found. Create one to get started.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
+                    {organizations.map(org => (
+                      <div 
+                        key={org.id} 
+                        className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                          selectedOrg?.id === org.id 
+                            ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/20' 
+                            : 'border-foreground/10 bg-foreground/5 hover:bg-foreground/10'
+                        }`}
+                        onClick={() => {
+                          setSelectedOrg(org);
+                          if (selectedOrg?.id !== org.id) {
+                            setSelectedProject(null);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center mb-1">
+                          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs mr-2">
+                            {org.name.charAt(0).toUpperCase()}
+                          </div>
+                          <p className="font-medium truncate">{org.name}</p>
+                        </div>
+                        {org.description && (
+                          <p className="text-xs text-foreground/70 mb-2 line-clamp-1">{org.description}</p>
+                        )}
+                        <div className="text-xs text-foreground/50">
+                          {orgProjectCounts[org.id] || 0} project(s)
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="projects" className="space-y-4">
+                {!selectedOrg ? (
+                  <p className="text-foreground/70">Please select an organization first.</p>
+                ) : loading ? (
+                  <p>Loading projects...</p>
+                ) : projects.length === 0 ? (
+                  <p className="text-foreground/70">No projects found for this organization.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto p-1">
+                    {projects.map(project => (
+                      <div 
+                        key={project.id} 
+                        className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                          selectedProject?.id === project.id 
+                            ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/20' 
+                            : 'border-foreground/10 bg-foreground/5 hover:bg-foreground/10'
+                        }`}
+                        onClick={() => setSelectedProject(project)}
+                      >
+                        <div className="flex items-center mb-1">
+                          <div className="w-6 h-6 rounded-full bg-secondary/30 flex items-center justify-center text-secondary-foreground text-xs mr-2">
+                            {project.name.charAt(0).toUpperCase()}
+                          </div>
+                          <p className="font-medium truncate">{project.name}</p>
+                        </div>
+                        {project.description && (
+                          <p className="text-xs text-foreground/70 mb-2 line-clamp-1">{project.description}</p>
+                        )}
+                        <div className="text-xs text-foreground/50">
+                          Created: {new Date(project.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+            
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setSettingsOpen(false)}>
+                Done
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
       
-      {/* Report Matrix Section - Only show if a project is selected */}
-      {selectedProject && (
+      {/* Report Matrix Section - Main focus */}
+      {selectedProject ? (
         <ReportMatrix projectId={selectedProject.id} />
+      ) : (
+        <div className="bg-foreground/5 p-8 rounded-lg text-center">
+          <h2 className="text-xl font-semibold mb-4">No Project Selected</h2>
+          <p className="mb-4">Please select an organization and project to view reports.</p>
+          <Button onClick={() => setSettingsOpen(true)}>
+            Open Settings
+          </Button>
+        </div>
       )}
       
       {error && (
