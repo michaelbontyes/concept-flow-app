@@ -1,30 +1,5 @@
 {
-  "node": {
-    "de33c75b5196ebf4e39d09de8ea9908c6a35bb39": {
-      "workers": {
-        "app/page": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fmichaelbontyes%2FRepos%2FGitHub%2Fconcept-flow-workspace%2Fconcept-flow-app%2Fsrc%2Fcomponents%2FAuthButton.tsx%22%2C%5B%22%24%24ACTION_0%22%5D%5D%5D&__client_imported__=!"
-      },
-      "layer": {
-        "app/page": "rsc"
-      }
-    },
-    "7e6ba189b8228eadd394648333d7ffb5d597400b": {
-      "workers": {
-        "app/login/page": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fmichaelbontyes%2FRepos%2FGitHub%2Fconcept-flow-workspace%2Fconcept-flow-app%2Fsrc%2Fapp%2Flogin%2Fpage.tsx%22%2C%5B%22%24%24ACTION_1%22%2C%22%24%24ACTION_0%22%5D%5D%5D&__client_imported__=!"
-      },
-      "layer": {
-        "app/login/page": "rsc"
-      }
-    },
-    "82d1de542e7e668e18365445a082d7898676f48c": {
-      "workers": {
-        "app/login/page": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fmichaelbontyes%2FRepos%2FGitHub%2Fconcept-flow-workspace%2Fconcept-flow-app%2Fsrc%2Fapp%2Flogin%2Fpage.tsx%22%2C%5B%22%24%24ACTION_1%22%2C%22%24%24ACTION_0%22%5D%5D%5D&__client_imported__=!"
-      },
-      "layer": {
-        "app/login/page": "rsc"
-      }
-    }
-  },
+  "node": {},
   "edge": {},
-  "encryptionKey": "dhCdofd4V42Ed1CwLj/OnVxsH7uDjXsozTHeaEfzDEY="
+  "encryptionKey": "GpREiydQnoGQgZFeVMmMEaqDWOjVXRBxUDpzTVVSnZY="
 }

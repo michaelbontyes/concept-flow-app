@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@/utils/supabase';
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Copy, Plus, ChevronRight, ChevronDown, AlertCircle, CheckCircle } from 'lucide-react';
+import MatrixView from './report/MatrixView';
+import RawView from './report/RawView';
+import { ChevronDown, ChevronRight, AlertCircle, CheckCircle, Copy } from 'lucide-react';
+import { Fragment } from 'react';
 
 interface ReportMatrixProps {
   projectId: string | null;
@@ -12,7 +14,7 @@ interface ReportMatrixProps {
 interface Report {
   id: string;
   project_id: string;
-  content: any; // This will store the JSON report content
+  content: any;
   created_at: string;
 }
 
@@ -23,6 +25,7 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
   const [activeTab, setActiveTab] = useState('matrix');
   const [expandedForms, setExpandedForms] = useState<Record<string, boolean>>({});
   const [expandedQuestions, setExpandedQuestions] = useState<Record<string, boolean>>({});
+  const [showOnlyFaulty, setShowOnlyFaulty] = useState<boolean>(false);
   
   const supabase = createBrowserClient();
   
@@ -51,7 +54,6 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
           setReport(data[0] as Report);
         } else {
           // If no report found in database, use the sample report from the local file
-          // This is just for demonstration purposes
           const response = await fetch('/api/sample-report');
           if (!response.ok) throw new Error('Failed to fetch sample report');
           const sampleReport = await response.json();
@@ -87,6 +89,11 @@ export default function ReportMatrix({ projectId }: ReportMatrixProps) {
       ...expandedQuestions,
       [questionId]: !expandedQuestions[questionId]
     });
+  };
+
+  // Toggle faulty filter
+  const toggleFaultyFilter = () => {
+    setShowOnlyFaulty(!showOnlyFaulty);
   };
 
   // Get unique form names from the report
