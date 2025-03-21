@@ -206,7 +206,7 @@ const StatusMatrix = () => {
     const missingCount = categoryStats.missing;
     
     const hasMissing = missingCount > 0;
-    const cellColorClass = percentage >= 90 ? 'bg-green-100' : 
+    const cellColorClass = percentage === 100 ? 'bg-green-100' : 
                            percentage >= 80 ? 'bg-yellow-100' : 'bg-red-100';
 
     return (

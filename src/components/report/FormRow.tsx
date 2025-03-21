@@ -47,7 +47,7 @@ export default function FormRow({
           const stats = formStats[env];
           if (!stats) return <td key={env} className="border p-3 text-center">N/A</td>;
           
-          const cellColorClass = stats.percentage >= 90 ? 'bg-green-100' : 
+          const cellColorClass = stats.percentage === 100 ? 'bg-green-100' : 
                                stats.percentage >= 80 ? 'bg-yellow-100' : 'bg-red-100';
           
           return (
