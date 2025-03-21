@@ -1,57 +1,54 @@
-# Dependency directories
-node_modules/
-jspm_packages/
+# Local development files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# SvelteKit build output
-.svelte-kit/
-build/
-.output/
-
-# Next.js build output
-.next/
-out/
-
-# Vite
-.vite/
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
-
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# Logs
-logs
-*.log
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
+
+# Build artifacts
+dist/
+build/
+.next/
+out/
+.svelte-kit/
+.output/
+.vite/
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output/
+/test-results/
+/playwright-report/
+/playwright/.cache/
 
 # Editor directories and files
+.idea/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/launch.json
-.idea/
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+.DS_Store
 
-# Testing
-coverage/
-.nyc_output/
+# Temporary files
+*.tmp
+*.temp
+.cache/
+tmp/
 
 # Vercel
 .vercel/
@@ -62,17 +59,12 @@ coverage/
 # Cloudflare
 .wrangler/
 
-# Temporary files
-*.tmp
-*.temp
-.cache/
-tmp/
+# Supabase
+.supabase/
 
-# Build artifacts
-dist/
-public/build/
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
 
-# Playwright
-/test-results/
-/playwright-report/
-/playwright/.cache/
+# Misc
+.turbo

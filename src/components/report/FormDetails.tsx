@@ -133,61 +133,56 @@ export default function FormDetails({
 
   return (
     <div className="p-4 bg-white">
-      <div className="mb-4 flex justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="mb-2 flex justify-between items-center">
+        <div className="flex items-center flex-wrap gap-2">
           {selectedItems.questions.length > 0 || selectedItems.answers.length > 0 ? (
             <>
-              <span className="text-sm">
-                {selectedItems.questions.length + selectedItems.answers.length} items selected
+              <span className="text-xs text-gray-600">
+                {selectedItems.questions.length + selectedItems.answers.length} selected
               </span>
               <Button 
-                size="sm" 
+                size="xs" 
                 variant="outline" 
                 onClick={clearSelection}
+                className="h-7 px-2 text-xs"
               >
                 Clear
               </Button>
               <Button 
-                size="sm" 
+                size="xs" 
                 variant="outline" 
                 onClick={handleCloneUUIDs}
+                className="h-7 px-2 text-xs"
               >
                 Clone UUIDs
               </Button>
-              {environments.map(env => (
-                <Button 
-                  key={env}
-                  size="sm" 
-                  variant="outline" 
-                  onClick={() => handleAddToSource(env)}
-                >
-                  Add to {env}
-                </Button>
-              ))}
+              <div className="flex flex-wrap gap-1">
+                {environments.map(env => (
+                  <Button 
+                    key={env}
+                    size="xs" 
+                    variant="outline" 
+                    onClick={() => handleAddToSource(env)}
+                    className="h-7 px-2 text-xs"
+                  >
+                    {env}
+                  </Button>
+                ))}
+              </div>
             </>
           ) : (
-            <span className="text-sm text-gray-500">Select items to perform actions</span>
+            <span className="text-xs text-gray-500">Select items to perform actions</span>
           )}
         </div>
-        <div className="flex items-center space-x-4">
-          {environments.map(env => (
-            <Button 
-              key={env}
-              size="sm" 
-              variant="outline" 
-              onClick={() => selectAllMissingItems(env)}
-            >
-              Select all missing in {env}
-            </Button>
-          ))}
-          <label className="flex items-center cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={showOnlyFaulty} 
-              onChange={toggleFaultyFilter}
-              className="mr-2"
-            />
-            <span>Show only items with issues</span>
+        <div className="flex items-center">
+          <Checkbox 
+            id="show-faulty"
+            checked={showOnlyFaulty} 
+            onCheckedChange={toggleFaultyFilter}
+            className="mr-1 h-3 w-3"
+          />
+          <label htmlFor="show-faulty" className="text-xs cursor-pointer">
+            Show issues only
           </label>
         </div>
       </div>
@@ -268,13 +263,13 @@ export default function FormDetails({
                         ) : (
                           <span className="w-6"></span>
                         )}
-                        <span>{item.question?.value || 'Unnamed Question'}</span>
+                        <span className="text-sm">{item.question?.value || 'Unnamed Question'}</span>
                         {(itemHasMissing || hasAnswerProblems) && (
                           <AlertCircle size={16} className="ml-2 text-red-500" />
                         )}
                       </div>
                     </td>
-                    <td className="p-2 font-mono text-xs">{questionId || 'No UUID'}</td>
+                    <td className="p-2 font-mono text-xs text-gray-500 truncate max-w-[120px]">{questionId || 'No UUID'}</td>
                     
                     {environments.map(env => {
                       const missingFields = [];
@@ -358,7 +353,7 @@ export default function FormDetails({
                             <td className="p-2 pl-8 border-t">
                               <div className="flex items-center">
                                 <span className="text-gray-500">↳</span>
-                                <span className="ml-2">{answer.answer?.value || 'Unnamed Answer'}</span>
+                                <span className="ml-2 text-xs text-gray-700">{answer.answer?.value || 'Unnamed Answer'}</span>
                               </div>
                             </td>
                             <td className="p-2 font-mono text-xs border-t">{answerId || 'No UUID'}</td>
