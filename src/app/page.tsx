@@ -1,9 +1,8 @@
-import AuthButton from '@/components/AuthButton'
 import Header from '@/components/Header'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@/utils/supabase'
-import ThemeToggle from '@/components/ThemeToggle'
 import UserProfile from '@/components/UserProfile'
+import { createServerClient } from '@/utils/supabase'
+import { cookies } from 'next/headers'
+import FormGeneratorCard from '@/components/FormGenerator/FormGeneratorCard'
 
 export default async function Index() {
   const cookieStore = cookies()
@@ -24,7 +23,13 @@ export default async function Index() {
       <Header />
       
       {isSupabaseConnected ? (
-        <UserProfile />
+        <>
+          <UserProfile />
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <FormGeneratorCard />
+            {/* Add other cards here */}
+          </div>
+        </>
       ) : (
         <div className="text-center p-8 bg-foreground/5 rounded-lg">
           <h2 className="text-xl font-semibold mb-4">Connect Supabase to get started</h2>
