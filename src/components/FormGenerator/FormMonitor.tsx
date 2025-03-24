@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, RefreshCw, Clock, FileSpreadsheet } from "lucide-react";
 import GeneratedFormsList from "./GeneratedFormsList";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,18 @@ interface FormStatus {
   form_data?: any;
   translation_data?: any;
   reason?: string;
+  status?: string; // Added status field for tracking sheet progress
+  started_at?: string;
+  completed_at?: string;
+}
+
+interface SheetStatus {
+  name: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  started_at?: string;
+  completed_at?: string;
+  forms?: FormStatus[];
+  error?: string;
 }
 
 interface JobStatus {
@@ -31,6 +43,9 @@ interface JobStatus {
   failed_forms: FormStatus[];
   preview_mode: boolean;
   processed_sheets?: number;
+  total_sheets?: number;
+  sheets_status?: SheetStatus[]; // Added for tracking individual sheets
+  current_sheet?: string;
   start_time?: string;
   end_time?: string;
   error?: string;
@@ -120,6 +135,39 @@ export default function FormMonitor({ jobId }: FormMonitorProps) {
       pollingIntervalRef.current = null;
     }
     checkStatus();
+  };
+
+  // Get status icon based on sheet status
+  const getStatusIcon = (sheetStatus: string) => {
+    switch (sheetStatus) {
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'failed':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      case 'processing':
+        return <Loader2 className="h-4 w-4 animate-spin text-primary" />;
+      case 'queued':
+      default:
+        return <Clock className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  // Format timestamp to readable format
+  const formatTime = (timestamp?: string) => {
+    if (!timestamp) return '';
+    return new Date(timestamp).toLocaleTimeString();
+  };
+
+  // Calculate duration between start and end times
+  const calculateDuration = (startTime?: string, endTime?: string) => {
+    if (!startTime || !endTime) return '';
+    
+    const start = new Date(startTime).getTime();
+    const end = new Date(endTime).getTime();
+    const durationMs = end - start;
+    
+    if (durationMs < 1000) return `${durationMs}ms`;
+    return `${(durationMs / 1000).toFixed(1)}s`;
   };
 
   useEffect(() => {
@@ -218,7 +266,64 @@ export default function FormMonitor({ jobId }: FormMonitorProps) {
                   {status.completed_forms.length + status.failed_forms.length} / {status.total_forms || status.processed_sheets || '?'} processed
                 </p>
               </div>
+              {status.start_time && (
+                <div>
+                  <p className="text-muted-foreground">Started</p>
+                  <p className="font-medium">{formatTime(status.start_time)}</p>
+                </div>
+              )}
+              {status.current_sheet && (
+                <div>
+                  <p className="text-muted-foreground">Current Sheet</p>
+                  <p className="font-medium">{status.current_sheet}</p>
+                </div>
+              )}
             </div>
+            
+            {/* Sheet Processing Status */}
+            {status.sheets_status && status.sheets_status.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium mb-2">Sheet Processing Status</h4>
+                <div className="border rounded-md overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sheet</th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Started</th>
+                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {status.sheets_status.map((sheet, index) => (
+                        <tr key={index} className={sheet.status === 'processing' ? 'bg-blue-50' : ''}>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm">
+                            <div className="flex items-center">
+                              <FileSpreadsheet className="h-4 w-4 mr-2 text-gray-500" />
+                              <span className="truncate max-w-[150px]">{sheet.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm">
+                            <div className="flex items-center">
+                              {getStatusIcon(sheet.status)}
+                              <span className="ml-2 capitalize">{sheet.status}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                            {sheet.started_at ? formatTime(sheet.started_at) : '-'}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                            {sheet.started_at && sheet.completed_at 
+                              ? calculateDuration(sheet.started_at, sheet.completed_at)
+                              : sheet.started_at ? 'In progress' : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
             
             {status.completed_forms.length > 0 && (
               <div className="mt-4">
@@ -228,6 +333,11 @@ export default function FormMonitor({ jobId }: FormMonitorProps) {
                     <div key={index} className="flex items-center gap-2 text-sm">
                       <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                       <span className="truncate">{form.name}</span>
+                      {form.completed_at && (
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {formatTime(form.completed_at)}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
