@@ -1,18 +1,93 @@
--- Grant permissions on the reports table
-GRANT SELECT ON reports TO anon, authenticated;
+-- First, check the current users table structure
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'users' AND column_name = 'id';
 
--- Enable RLS on the reports table
-ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+-- If users table already exists with integer id, create a new version with UUID
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
 
--- Create policy for users to view reports in their projects
-CREATE POLICY "Users can view reports in their projects" 
-ON reports FOR SELECT 
-TO anon, authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM projects
-    JOIN organizations ON projects.organization_id = organizations.id
-    WHERE projects.id = reports.project_id
-    AND organizations.members = auth.uid()::uuid
-  )
-);
+-- Create a trigger function to sync user data to our users table
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, email, name, role, created_at)
+  VALUES (
+    new.id,
+    new.email,
+    COALESCE(new.raw_user_meta_data->>'name', 'User'),
+    COALESCE(new.raw_user_meta_data->>'role', 'user'),
+    new.created_at
+  );
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a trigger on auth.users table
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Check if users table exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
+    -- Alter the existing users table if it has integer id
+    IF EXISTS (
+      SELECT FROM information_schema.columns 
+      WHERE table_name = 'users' AND column_name = 'id' AND data_type = 'integer'
+    ) THEN
+      -- Create a temporary table with UUID id
+      CREATE TABLE users_new (
+        id UUID PRIMARY KEY,
+        email TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('admin', 'user', 'viewer')),
+        organization_id UUID REFERENCES public.organizations(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      -- Drop the old table and rename the new one
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+    END IF;
+  ELSE
+    -- Create a new users table with UUID id
+    CREATE TABLE public.users (
+      id UUID PRIMARY KEY,
+      email TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('admin', 'user', 'viewer')),
+      organization_id UUID REFERENCES public.organizations(id),
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  END IF;
+END $$;
+
+-- Add foreign key reference to auth.users if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'users_id_fkey' AND table_name = 'users'
+  ) THEN
+    ALTER TABLE public.users 
+    ADD CONSTRAINT users_id_fkey 
+    FOREIGN KEY (id) REFERENCES auth.users(id);
+  END IF;
+END $$;
+
+-- Enable RLS on the users table
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for users to view their own data
+DROP POLICY IF EXISTS "Users can view their own data" ON public.users;
+CREATE POLICY "Users can view their own data" 
+ON public.users FOR SELECT 
+TO authenticated
+USING (id = auth.uid());
+
+-- Also check organizations table to ensure it uses UUID
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'organizations' AND column_name = 'id';

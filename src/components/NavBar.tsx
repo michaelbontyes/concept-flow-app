@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import ClientAuthButton from '@/components/ClientAuthButton'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function NavBar() {
   const pathname = usePathname()
@@ -17,7 +18,10 @@ export default function NavBar() {
           </Link>
         </div>
         
-        {!isLoginPage && <ClientAuthButton />}
+        <div className="flex items-center gap-4">
+          <ThemeToggle side="bottom" />
+          {!isLoginPage && <ClientAuthButton />}
+        </div>
       </div>
     </nav>
   )
