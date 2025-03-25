@@ -19,14 +19,16 @@ export default async function Index() {
   const isSupabaseConnected = canInitSupabaseClient()
 
   return (
-    <div className="flex w-full flex-1 flex-col items-center gap-8">
+    <div className="flex w-full flex-1 flex-col items-left gap-8">
       <Header />
       
       {isSupabaseConnected ? (
         <>
+          <div className="w-full max-w-md mt-4">
+            <FormGeneratorCard />
+          </div>
           <UserProfile />
           <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            <FormGeneratorCard />
             {/* Add other cards here */}
           </div>
         </>
