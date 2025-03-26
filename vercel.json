@@ -1,6 +1,11 @@
 {
-  "version": 2,
-  "env": {
-    "DEPLOYMENT_MODE": "development"
-  }
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next",
+      "config": {
+        "installCommand": "pnpm install --no-frozen-lockfile"
+      }
+    }
+  ]
 }
