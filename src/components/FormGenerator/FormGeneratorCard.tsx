@@ -6,19 +6,16 @@ import { ArrowRight } from "lucide-react";
 export default function FormGeneratorCard() {
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Form Generator</CardTitle>
-        <CardDescription>
-          Generate OpenMRS 3.0 forms from Excel metadata
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg">Form Generator</CardTitle>
+        <CardDescription className="text-sm">
+          Generate OpenMRS 3.0 forms
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <p className="mb-4">
-          Upload Excel files with form metadata and generate standardized OpenMRS 3.0 form schemas.
-        </p>
+      <CardContent className="pt-0">
         <Link href="/form-generator">
-          <Button className="w-full">
-            Open Form Generator <ArrowRight className="ml-2 h-4 w-4" />
+          <Button className="w-full text-sm" size="sm">
+            Open <ArrowRight className="ml-2 h-3 w-3" />
           </Button>
         </Link>
       </CardContent>
