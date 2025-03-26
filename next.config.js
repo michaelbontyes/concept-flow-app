@@ -39,6 +39,9 @@ const nextConfig = {
     NEXT_PUBLIC_FRONTEND_URL: process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000',
     NEXT_PUBLIC_FRONTEND_URL_PROD: 'https://concept-flow.madiro.org',
     NEXT_PUBLIC_FRONTEND_URL_DEV: 'http://localhost:3000',
+    NEXT_PUBLIC_VERCEL_URL: 'https://concept-flow-app.vercel.app',
+    NEXT_PUBLIC_CONCEPT_FLOW_API_URL: 'https://concept-flow-api.onrender.com',
+    NEXT_PUBLIC_FORM_GENERATOR_API_URL: 'https://concept-flow-api.onrender.com/api/v1/form-generator',
   },
 }
 

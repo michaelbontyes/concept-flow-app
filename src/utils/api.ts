@@ -7,8 +7,8 @@ const supabase = createBrowserClient();
 export const getApiBaseUrl = () => {
   // Use the environment-specific URL
   return process.env.NODE_ENV === 'production' 
-    ? process.env.NEXT_PUBLIC_FRONTEND_URL_PROD 
-    : process.env.NEXT_PUBLIC_FRONTEND_URL_DEV;
+    ? process.env.NEXT_PUBLIC_CONCEPT_FLOW_API_URL 
+    : 'http://localhost:8000';
 };
 
 // Updated function to handle organization_id access with proper permissions
