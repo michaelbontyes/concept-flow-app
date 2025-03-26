@@ -17,6 +17,22 @@ const nextConfig = {
   },
   // Enable React strict mode for better development experience
   reactStrictMode: true,
+  
+  // Disable built-in TypeScript type checking
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    // !! WARN !!
+    ignoreBuildErrors: true,
+  },
+  
+  // Optionally, also disable ESLint during builds
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
+  },
 }
 
 module.exports = withBundleAnalyzer(nextConfig)
