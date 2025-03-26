@@ -43,12 +43,12 @@ export default function RootLayout({
               <div className="flex max-w-6xl w-full flex-1 flex-col gap-8 px-3 pt-20">
                 {children}
               </div>
-              <Analytics />
-            </main>
-            <ReactQueryDevtools initialIsOpen={false} />
-          </ReactQueryProvider>
-        </ThemeProvider>
-      </body>
-    </html>
+          </main>
+          <ReactQueryDevtools initialIsOpen={false} />
+          <Analytics />
+        </ReactQueryProvider>
+      </ThemeProvider>
+    </body>
+  </html>
   )
 }
