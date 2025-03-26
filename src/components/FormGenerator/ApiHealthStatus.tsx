@@ -20,6 +20,8 @@ export default function ApiHealthStatus() {
       const apiBaseUrl = process.env.NEXT_PUBLIC_CONCEPT_FLOW_API_URL || 'http://localhost:8000';
       const response = await fetch(`${apiBaseUrl}/health`, {
         method: 'GET',
+        mode: 'cors',
+        credentials: 'include',
         headers: {
           'Accept': 'application/json',
         },

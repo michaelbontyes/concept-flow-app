@@ -8,3 +8,19 @@ $$;
 
 -- Grant execute permission on the function
 GRANT EXECUTE ON FUNCTION get_all_organizations() TO anon, authenticated;
+
+-- Create a function to get user organizations
+CREATE OR REPLACE FUNCTION public.get_user_organizations(user_id UUID)
+RETURNS SETOF organizations
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT o.* 
+  FROM organizations o
+  JOIN users u ON o.id = u.organization_id
+  WHERE u.id = user_id
+  ORDER BY o.created_at DESC;
+$$;
+
+-- Grant execute permission on the function
+GRANT EXECUTE ON FUNCTION public.get_user_organizations(UUID) TO authenticated, anon;

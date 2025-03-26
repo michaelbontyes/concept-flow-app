@@ -1,0 +1,21 @@
+const express = require('express');
+const cors = require('cors');
+const app = express();
+
+// Enable CORS for all routes
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://concept-flow.madiro.org'
+  ],
+  credentials: true
+}));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy' });
+});
+
+app.listen(8000, () => {
+  console.log('API server running on port 8000');
+});

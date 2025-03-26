@@ -1,9 +1,45 @@
--- First, check the current users table structure
-SELECT column_name, data_type 
+-- First, check the current tables structure
+SELECT table_name, column_name, data_type 
 FROM information_schema.columns 
-WHERE table_name = 'users' AND column_name = 'id';
+WHERE table_name IN ('users', 'organizations') AND column_name = 'id';
 
--- If users table already exists with integer id, create a new version with UUID
+-- Create or update organizations table to use UUID
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'organizations') THEN
+    -- Check if organizations table has integer id
+    IF EXISTS (
+      SELECT FROM information_schema.columns 
+      WHERE table_name = 'organizations' AND column_name = 'id' AND data_type = 'integer'
+    ) THEN
+      -- Create a temporary table with UUID id
+      CREATE TABLE organizations_new (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        -- Add other columns as needed
+      );
+      
+      -- Copy data with new UUIDs (optional, adjust as needed)
+      -- INSERT INTO organizations_new (name, created_at)
+      -- SELECT name, created_at FROM organizations;
+      
+      -- Drop the old table and rename the new one
+      DROP TABLE organizations CASCADE;
+      ALTER TABLE organizations_new RENAME TO organizations;
+    END IF;
+  ELSE
+    -- Create a new organizations table with UUID id
+    CREATE TABLE public.organizations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name TEXT NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      -- Add other columns as needed
+    );
+  END IF;
+END $$;
+
+-- Now proceed with users table setup
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user();
 
@@ -32,7 +68,7 @@ CREATE TRIGGER on_auth_user_created
 DO $$
 BEGIN
   IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
-    -- Alter the existing users table if it has integer id
+    -- Alter the existing users table if has integer id
     IF EXISTS (
       SELECT FROM information_schema.columns 
       WHERE table_name = 'users' AND column_name = 'id' AND data_type = 'integer'
@@ -86,8 +122,3 @@ CREATE POLICY "Users can view their own data"
 ON public.users FOR SELECT 
 TO authenticated
 USING (id = auth.uid());
-
--- Also check organizations table to ensure it uses UUID
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'organizations' AND column_name = 'id';

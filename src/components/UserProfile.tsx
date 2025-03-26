@@ -8,6 +8,7 @@ import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Settings, User as UserIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { getOrganizationsForUser } from '@/utils/api';
 
 interface Organization {
   id: string;
@@ -42,6 +43,7 @@ export default function UserProfile() {
   useEffect(() => {
     async function fetchUserData() {
       try {
+        setLoading(true);
         // Get current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError) throw userError;
@@ -52,17 +54,11 @@ export default function UserProfile() {
           return;
         }
         
-        // Get user's organizations with project counts
-        const { data: orgs, error: orgError } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('members', user.id)
-          .order('created_at', { ascending: false });
-        
-        if (orgError) throw orgError;
+        // Get user's organizations with the updated function
+        const orgs = await getOrganizationsForUser(user.id);
+        setOrganizations(orgs || []);
         
         if (orgs && orgs.length > 0) {
-          setOrganizations(orgs as Organization[]);
           // Select the most recent organization by default
           setSelectedOrg(orgs[0] as Organization);
           
@@ -83,6 +79,7 @@ export default function UserProfile() {
         
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching user data:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLoading(false);
       }

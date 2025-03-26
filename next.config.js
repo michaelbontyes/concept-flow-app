@@ -33,6 +33,13 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  
+  // Environment variables that will be available at build time
+  env: {
+    NEXT_PUBLIC_FRONTEND_URL: process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_FRONTEND_URL_PROD: 'https://concept-flow.madiro.org',
+    NEXT_PUBLIC_FRONTEND_URL_DEV: 'http://localhost:3000',
+  },
 }
 
 module.exports = withBundleAnalyzer(nextConfig)
